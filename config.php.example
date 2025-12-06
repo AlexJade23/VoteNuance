@@ -1,0 +1,43 @@
+<?php
+/**
+ * Configuration SSO Google + Microsoft - EXEMPLE
+ * 
+ * Copiez ce fichier en config.php et remplissez vos propres valeurs.
+ * Ne commitez JAMAIS config.php dans votre dépôt Git !
+ */
+
+// Configuration base de données
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'votre_base');
+define('DB_USER', 'votre_user');
+define('DB_PASS', 'votre_password');
+
+// Configuration Google OAuth
+// Obtenir depuis : https://console.cloud.google.com
+define('GOOGLE_CLIENT_ID', 'VOTRE_CLIENT_ID.apps.googleusercontent.com');
+define('GOOGLE_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET');
+define('GOOGLE_REDIRECT_URI', 'https://votresite.com/callback.php');
+
+// Configuration Microsoft OAuth
+// Obtenir depuis : https://portal.azure.com
+define('MICROSOFT_CLIENT_ID', 'VOTRE_CLIENT_ID_MICROSOFT');
+define('MICROSOFT_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET_MICROSOFT');
+define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
+define('MICROSOFT_TENANT', 'common'); // 'common' pour comptes personnels et professionnels
+
+// URLs OAuth (ne pas modifier)
+define('GOOGLE_AUTH_URL', 'https://accounts.google.com/o/oauth2/v2/auth');
+define('GOOGLE_TOKEN_URL', 'https://oauth2.googleapis.com/token');
+
+define('MICROSOFT_AUTH_URL', 'https://login.microsoftonline.com/' . MICROSOFT_TENANT . '/oauth2/v2.0/authorize');
+define('MICROSOFT_TOKEN_URL', 'https://login.microsoftonline.com/' . MICROSOFT_TENANT . '/oauth2/v2.0/token');
+
+// Configuration session
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_secure', 1); // HTTPS uniquement
+ini_set('session.cookie_samesite', 'Lax');
+
+// Démarrer la session si pas déjà fait
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
