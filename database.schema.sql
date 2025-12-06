@@ -112,6 +112,8 @@ CREATE TABLE scrutins (
     est_public TINYINT(1) DEFAULT 0
         COMMENT 'Scrutin visible publiquement',
     est_archive TINYINT(1) DEFAULT 0,
+    ordre_mentions TINYINT(1) DEFAULT 0
+        COMMENT '0=Contre vers Pour, 1=Pour vers Contre',
 
     -- Notifications
     type_notification TINYINT UNSIGNED DEFAULT 0,

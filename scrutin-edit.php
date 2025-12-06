@@ -42,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nb_gagnants = intval($_POST['nb_gagnants'] ?? 1);
         $affiche_resultats = isset($_POST['affiche_resultats']) ? 1 : 0;
         $est_public = isset($_POST['est_public']) ? 1 : 0;
+        $ordre_mentions = intval($_POST['ordre_mentions'] ?? 0);
 
         if (empty($titre)) {
             $errors[] = 'Le titre est obligatoire';
@@ -67,7 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'nb_participants_attendus' => $nb_participants,
                     'nb_gagnants' => $nb_gagnants,
                     'affiche_resultats' => $affiche_resultats,
-                    'est_public' => $est_public
+                    'est_public' => $est_public,
+                    'ordre_mentions' => $ordre_mentions
                 ]);
 
                 // Supprimer les anciennes questions et recréer
@@ -542,6 +544,18 @@ $csrfToken = generateCsrfToken();
                                <?php echo $scrutin['est_public'] ? 'checked' : ''; ?>>
                         Scrutin public (visible par tous)
                     </label>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Ordre d'affichage des mentions</label>
+                    <select name="ordre_mentions" style="max-width: 300px;">
+                        <option value="0" <?php echo ($scrutin['ordre_mentions'] ?? 0) == 0 ? 'selected' : ''; ?>>
+                            Contre → Pour (AC, FC, PC, SA, PP, FP, AP)
+                        </option>
+                        <option value="1" <?php echo ($scrutin['ordre_mentions'] ?? 0) == 1 ? 'selected' : ''; ?>>
+                            Pour → Contre (AP, FP, PP, SA, PC, FC, AC)
+                        </option>
+                    </select>
                 </div>
             </div>
 

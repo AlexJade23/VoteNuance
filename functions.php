@@ -258,8 +258,8 @@ function createScrutin($data) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('
         INSERT INTO scrutins (code, titre, resume, notice, debut_at, fin_at,
-            nb_participants_attendus, nb_gagnants, affiche_resultats, est_public, owner_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            nb_participants_attendus, nb_gagnants, affiche_resultats, est_public, ordre_mentions, owner_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
         $data['code'],
@@ -272,6 +272,7 @@ function createScrutin($data) {
         $data['nb_gagnants'],
         $data['affiche_resultats'],
         $data['est_public'],
+        $data['ordre_mentions'] ?? 0,
         $data['owner_id']
     ]);
     return $pdo->lastInsertId();
@@ -322,7 +323,7 @@ function updateScrutin($id, $data) {
     $stmt = $pdo->prepare('
         UPDATE scrutins SET
             titre = ?, resume = ?, notice = ?, debut_at = ?, fin_at = ?,
-            nb_participants_attendus = ?, nb_gagnants = ?, affiche_resultats = ?, est_public = ?
+            nb_participants_attendus = ?, nb_gagnants = ?, affiche_resultats = ?, est_public = ?, ordre_mentions = ?
         WHERE id = ?
     ');
     $stmt->execute([
@@ -335,6 +336,7 @@ function updateScrutin($id, $data) {
         $data['nb_gagnants'],
         $data['affiche_resultats'],
         $data['est_public'],
+        $data['ordre_mentions'] ?? 0,
         $id
     ]);
 }

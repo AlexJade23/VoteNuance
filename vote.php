@@ -18,6 +18,11 @@ if (!$scrutin) {
 $questions = getQuestionsByScrutin($scrutin['id']);
 $mentions = getMentionsByEchelle(1);
 
+// Inverser l'ordre si demandé (1 = Pour vers Contre)
+if ($scrutin['ordre_mentions'] ?? 0) {
+    $mentions = array_reverse($mentions);
+}
+
 // Vérifier si le scrutin est ouvert
 $now = time();
 $debut = $scrutin['debut_at'] ? strtotime($scrutin['debut_at']) : null;
@@ -325,15 +330,27 @@ $typeLabels = [
 
         /* Vote nuancé */
         .mentions-grid {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
             gap: 8px;
-            flex-wrap: wrap;
             margin-top: 15px;
         }
 
+        @media (max-width: 600px), (orientation: portrait) {
+            .mentions-grid {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+        }
+
         .mention-option {
-            flex: 1;
-            min-width: 90px;
+            aspect-ratio: 1 / 1;
+        }
+
+        @media (max-width: 600px), (orientation: portrait) {
+            .mention-option {
+                aspect-ratio: auto;
+            }
         }
 
         .mention-option input {
@@ -341,26 +358,40 @@ $typeLabels = [
         }
 
         .mention-option label {
-            display: block;
-            padding: 12px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            min-height: 60px;
             text-align: center;
             border-radius: 8px;
             cursor: pointer;
-            border: 2px solid transparent;
+            border: 3px solid transparent;
             transition: all 0.2s;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: white;
+            padding: 8px 4px;
+            line-height: 1.2;
+        }
+
+        @media (max-width: 600px), (orientation: portrait) {
+            .mention-option label {
+                min-height: 50px;
+                font-size: 14px;
+                padding: 12px 15px;
+            }
         }
 
         .mention-option input:checked + label {
-            border-color: #333;
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border-color: #000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            transform: scale(1.03);
         }
 
         .mention-option label:hover {
-            transform: scale(1.02);
+            opacity: 0.9;
         }
 
         /* Réponse ouverte */
