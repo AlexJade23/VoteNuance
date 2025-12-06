@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                header('Location: scrutin-view.php?code=' . urlencode($code) . '&updated=1');
+                header('Location: /' . urlencode($code) . '/v/?updated=1');
                 exit;
 
             } catch (Exception $e) {
@@ -455,7 +455,7 @@ $csrfToken = generateCsrfToken();
         <div class="header">
             <h1>Modifier le scrutin</h1>
             <div class="header-links">
-                <a href="scrutin-view.php?code=<?php echo urlencode($code); ?>">Voir</a>
+                <a href="/<?php echo urlencode($code); ?>/v/">Voir</a>
                 <a href="mes-scrutins.php">Mes scrutins</a>
             </div>
         </div>
@@ -557,7 +557,7 @@ $csrfToken = generateCsrfToken();
             </div>
 
             <div class="form-actions">
-                <a href="scrutin-view.php?code=<?php echo urlencode($code); ?>" class="btn btn-secondary">Annuler</a>
+                <a href="/<?php echo urlencode($code); ?>/v/" class="btn btn-secondary">Annuler</a>
                 <button type="submit" class="btn btn-success">Enregistrer les modifications</button>
             </div>
         </form>

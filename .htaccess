@@ -1,0 +1,20 @@
+# Vote Nuance - URL Rewriting
+# URLs courtes : /CODE, /CODE/s/, /CODE/r/
+
+RewriteEngine On
+
+# Ne pas reecrire les fichiers/dossiers existants
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# /CODE/s/ → scrutin-edit.php?code=CODE (settings/modifier)
+RewriteRule ^([a-zA-Z0-9\-]+)/s/?$ scrutin-edit.php?code=$1 [L,QSA]
+
+# /CODE/r/ → scrutin-results.php?code=CODE (resultats)
+RewriteRule ^([a-zA-Z0-9\-]+)/r/?$ scrutin-results.php?code=$1 [L,QSA]
+
+# /CODE/v/ → scrutin-view.php?code=CODE (voir sans voter)
+RewriteRule ^([a-zA-Z0-9\-]+)/v/?$ scrutin-view.php?code=$1 [L,QSA]
+
+# /CODE → vote.php?code=CODE (voter)
+RewriteRule ^([a-zA-Z0-9\-]+)/?$ vote.php?code=$1 [L,QSA]

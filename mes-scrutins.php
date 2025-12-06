@@ -402,7 +402,7 @@ function getScrutinStatus($scrutin) {
                 <div class="scrutin-main">
                     <div class="scrutin-header">
                         <h3 class="scrutin-title">
-                            <a href="scrutin-view.php?code=<?php echo urlencode($scrutin['code']); ?>">
+                            <a href="/<?php echo urlencode($scrutin['code']); ?>/v/">
                                 <?php echo htmlspecialchars($scrutin['titre']); ?>
                             </a>
                         </h3>
@@ -421,8 +421,8 @@ function getScrutinStatus($scrutin) {
                     </div>
                 </div>
                 <div class="scrutin-actions">
-                    <a href="scrutin-view.php?code=<?php echo urlencode($scrutin['code']); ?>" class="btn-view">Voir</a>
-                    <a href="scrutin-edit.php?code=<?php echo urlencode($scrutin['code']); ?>" class="btn-edit">Modifier</a>
+                    <a href="/<?php echo urlencode($scrutin['code']); ?>/v/" class="btn-view">Voir</a>
+                    <a href="/<?php echo urlencode($scrutin['code']); ?>/s/" class="btn-edit">Modifier</a>
                     <button type="button" class="btn-delete" onclick="confirmDelete(<?php echo $scrutin['id']; ?>, '<?php echo htmlspecialchars(addslashes($scrutin['titre'])); ?>')">Supprimer</button>
                 </div>
             </div>

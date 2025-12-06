@@ -421,8 +421,8 @@ $typeLabels = [
 
             <?php if ($isOwner): ?>
             <div class="header-actions" style="margin-top: 20px;">
-                <a href="scrutin-edit.php?code=<?php echo urlencode($scrutin['code']); ?>" class="btn btn-secondary">Modifier</a>
-                <a href="scrutin-results.php?code=<?php echo urlencode($scrutin['code']); ?>" class="btn btn-primary">Résultats</a>
+                <a href="/<?php echo urlencode($scrutin['code']); ?>/s/" class="btn btn-secondary">Modifier</a>
+                <a href="/<?php echo urlencode($scrutin['code']); ?>/r/" class="btn btn-primary">Résultats</a>
             </div>
             <?php endif; ?>
         </div>
@@ -497,7 +497,7 @@ $typeLabels = [
         <?php if ($status['canVote']): ?>
         <div class="card vote-section">
             <p>Ce scrutin est ouvert aux votes.</p>
-            <a href="vote.php?code=<?php echo urlencode($scrutin['code']); ?>" class="btn btn-success" style="font-size: 16px; padding: 15px 40px;">
+            <a href="/<?php echo urlencode($scrutin['code']); ?>/" class="btn btn-success" style="font-size: 16px; padding: 15px 40px;">
                 Participer au vote
             </a>
         </div>
@@ -509,7 +509,7 @@ $typeLabels = [
             <div class="share-section" style="border-top: none; padding-top: 0; margin-top: 0;">
                 <label>Lien de partage</label>
                 <div class="share-url">
-                    <input type="text" id="share-url" readonly value="<?php echo htmlspecialchars((isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/vote.php?code=' . $scrutin['code']); ?>">
+                    <input type="text" id="share-url" readonly value="<?php echo htmlspecialchars((isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/' . $scrutin['code']); ?>">
                     <button onclick="copyUrl()">Copier</button>
                 </div>
             </div>

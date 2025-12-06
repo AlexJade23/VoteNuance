@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                header('Location: scrutin-view.php?code=' . urlencode($code) . '&created=1');
+                header('Location: /' . urlencode($code) . '/v/?created=1');
                 exit;
 
             } catch (Exception $e) {
