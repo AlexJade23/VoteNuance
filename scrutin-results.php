@@ -569,52 +569,62 @@ $totalHeight = $maxHaut + $maxBas;
                             1 => '#D32F2F'  // AC
                         ];
 
-                        // Segments pour (ordre: AP en haut, puis FP, puis PP)
-                        $pourSegments = $ordreInverse
-                            ? [['rang' => 5, 'label' => 'PP'], ['rang' => 6, 'label' => 'FP'], ['rang' => 7, 'label' => 'AP']]
-                            : [['rang' => 7, 'label' => 'AP'], ['rang' => 6, 'label' => 'FP'], ['rang' => 5, 'label' => 'PP']];
+                        // Calcul des hauteurs individuelles pour chaque segment
+                        $countAP = $r['counts'][7] ?? 0;
+                        $countFP = $r['counts'][6] ?? 0;
+                        $countPP = $r['counts'][5] ?? 0;
+                        $countSA = $r['counts'][4] ?? 0;
+                        $countPC = $r['counts'][3] ?? 0;
+                        $countFC = $r['counts'][2] ?? 0;
+                        $countAC = $r['counts'][1] ?? 0;
 
-                        // Segments contre (ordre: PC en haut du bas, puis FC, puis AC)
-                        $contreSegments = $ordreInverse
-                            ? [['rang' => 3, 'label' => 'PC'], ['rang' => 2, 'label' => 'FC'], ['rang' => 1, 'label' => 'AC']]
-                            : [['rang' => 3, 'label' => 'PC'], ['rang' => 2, 'label' => 'FC'], ['rang' => 1, 'label' => 'AC']];
+                        $halfSA = $countSA / 2;
+
+                        // Hauteur totale utilisée pour proportions
+                        $hauteurHaut = $countAP + $countFP + $countPP + $halfSA;
+                        $hauteurBas = $countPC + $countFC + $countAC + $halfSA;
                     ?>
                     <div class="bar-column" data-question="<?php echo $idx; ?>">
                         <div class="bar-wrapper">
-                            <!-- Partie haute (Pour) -->
+                            <!-- Partie haute : du haut vers le centre = AP, FP, PP, demi-SA -->
                             <div class="bar-top" style="height: <?php echo $centerLinePos; ?>%; justify-content: flex-end;">
                                 <?php
-                                // Calculer la hauteur totale de la partie pour
-                                $pourTotal = $r['pour'] + ($r['neutre'] / 2);
-                                foreach ($pourSegments as $seg):
-                                    $count = $r['counts'][$seg['rang']] ?? 0;
-                                    if ($seg['rang'] == 5) $count += $r['neutre'] / 2; // Ajouter moitié SA à PP
-                                    $segHeight = $pourTotal > 0 ? ($count / $pourTotal) * $topHeight : 0;
-                                    if ($segHeight < 0.5) continue;
+                                // Ordre d'affichage du haut vers le bas : AP, FP, PP, SA/2
+                                $segmentsHaut = [
+                                    ['rang' => 7, 'count' => $countAP, 'color' => $colors[7]],
+                                    ['rang' => 6, 'count' => $countFP, 'color' => $colors[6]],
+                                    ['rang' => 5, 'count' => $countPP, 'color' => $colors[5]],
+                                    ['rang' => 4, 'count' => $halfSA, 'color' => $colors[4]] // demi SA
+                                ];
+                                foreach ($segmentsHaut as $seg):
+                                    if ($seg['count'] <= 0) continue;
+                                    $segHeight = $hauteurHaut > 0 ? ($seg['count'] / $hauteurHaut) * $topHeight : 0;
+                                    if ($segHeight < 0.3) continue;
                                 ?>
                                 <div class="bar-segment"
-                                     style="height: <?php echo $segHeight; ?>%; background: <?php echo $colors[$seg['rang']]; ?>;"
-                                     data-label="<?php echo $seg['label']; ?>"
-                                     data-count="<?php echo $r['counts'][$seg['rang']] ?? 0; ?>"
+                                     style="height: <?php echo $segHeight; ?>%; background: <?php echo $seg['color']; ?>;"
                                      data-rang="<?php echo $seg['rang']; ?>">
                                 </div>
                                 <?php endforeach; ?>
                             </div>
 
-                            <!-- Partie basse (Contre) -->
+                            <!-- Partie basse : du centre vers le bas = demi-SA, PC, FC, AC -->
                             <div class="bar-bottom" style="height: <?php echo 100 - $centerLinePos; ?>%;">
                                 <?php
-                                $contreTotal = $r['contre'] + ($r['neutre'] / 2);
-                                foreach ($contreSegments as $seg):
-                                    $count = $r['counts'][$seg['rang']] ?? 0;
-                                    if ($seg['rang'] == 3) $count += $r['neutre'] / 2; // Ajouter moitié SA à PC
-                                    $segHeight = $contreTotal > 0 ? ($count / $contreTotal) * $bottomHeight : 0;
-                                    if ($segHeight < 0.5) continue;
+                                // Ordre d'affichage du haut vers le bas : SA/2, PC, FC, AC
+                                $segmentsBas = [
+                                    ['rang' => 4, 'count' => $halfSA, 'color' => $colors[4]], // demi SA
+                                    ['rang' => 3, 'count' => $countPC, 'color' => $colors[3]],
+                                    ['rang' => 2, 'count' => $countFC, 'color' => $colors[2]],
+                                    ['rang' => 1, 'count' => $countAC, 'color' => $colors[1]]
+                                ];
+                                foreach ($segmentsBas as $seg):
+                                    if ($seg['count'] <= 0) continue;
+                                    $segHeight = $hauteurBas > 0 ? ($seg['count'] / $hauteurBas) * $bottomHeight : 0;
+                                    if ($segHeight < 0.3) continue;
                                 ?>
                                 <div class="bar-segment"
-                                     style="height: <?php echo $segHeight; ?>%; background: <?php echo $colors[$seg['rang']]; ?>;"
-                                     data-label="<?php echo $seg['label']; ?>"
-                                     data-count="<?php echo $r['counts'][$seg['rang']] ?? 0; ?>"
+                                     style="height: <?php echo $segHeight; ?>%; background: <?php echo $seg['color']; ?>;"
                                      data-rang="<?php echo $seg['rang']; ?>">
                                 </div>
                                 <?php endforeach; ?>
