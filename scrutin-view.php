@@ -393,7 +393,7 @@ $typeLabels = [
 <body>
     <div class="container">
         <?php if ($isOwner): ?>
-        <a href="mes-scrutins.php" class="back-link">← Retour à mes scrutins</a>
+        <a href="/mes-scrutins.php" class="back-link">← Retour à mes scrutins</a>
         <?php endif; ?>
 
         <?php if (isset($_GET['created'])): ?>

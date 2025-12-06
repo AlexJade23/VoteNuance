@@ -370,8 +370,8 @@ function getScrutinStatus($scrutin) {
         <div class="header">
             <h1>Mes scrutins</h1>
             <div class="header-links">
-                <a href="dashboard.php">Tableau de bord</a>
-                <a href="scrutin-create.php" class="btn btn-primary">+ Nouveau scrutin</a>
+                <a href="/dashboard.php">Tableau de bord</a>
+                <a href="/scrutin-create.php" class="btn btn-primary">+ Nouveau scrutin</a>
             </div>
         </div>
 
@@ -391,7 +391,7 @@ function getScrutinStatus($scrutin) {
         <div class="empty-state">
             <h2>Aucun scrutin</h2>
             <p>Vous n'avez pas encore créé de scrutin. Commencez maintenant !</p>
-            <a href="scrutin-create.php" class="btn btn-primary">Créer mon premier scrutin</a>
+            <a href="/scrutin-create.php" class="btn btn-primary">Créer mon premier scrutin</a>
         </div>
         <?php else: ?>
         <div class="scrutins-grid">

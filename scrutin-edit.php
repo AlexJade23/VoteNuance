@@ -458,7 +458,7 @@ $csrfToken = generateCsrfToken();
             <h1>Modifier le scrutin</h1>
             <div class="header-links">
                 <a href="/<?php echo urlencode($code); ?>/v/">Voir</a>
-                <a href="mes-scrutins.php">Mes scrutins</a>
+                <a href="/mes-scrutins.php">Mes scrutins</a>
             </div>
         </div>
 

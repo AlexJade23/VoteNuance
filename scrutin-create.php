@@ -460,8 +460,8 @@ $csrfToken = generateCsrfToken();
         <div class="header">
             <h1>Créer un scrutin</h1>
             <div class="header-links">
-                <a href="mes-scrutins.php">Mes scrutins</a>
-                <a href="dashboard.php">Tableau de bord</a>
+                <a href="/mes-scrutins.php">Mes scrutins</a>
+                <a href="/dashboard.php">Tableau de bord</a>
             </div>
         </div>
 
@@ -581,7 +581,7 @@ $csrfToken = generateCsrfToken();
             </div>
 
             <div class="form-actions">
-                <a href="mes-scrutins.php" class="btn btn-secondary">Annuler</a>
+                <a href="/mes-scrutins.php" class="btn btn-secondary">Annuler</a>
                 <button type="submit" class="btn btn-success">Créer le scrutin</button>
             </div>
         </form>
