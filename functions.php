@@ -222,3 +222,237 @@ function deleteUser($userId) {
     $stmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
     $stmt->execute([$userId]);
 }
+
+// ============================================================================
+// SCRUTINS
+// ============================================================================
+
+/**
+ * Générer un code unique pour un scrutin
+ */
+function generateScrutinCode() {
+    $chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    do {
+        $code = '';
+        for ($i = 0; $i < 8; $i++) {
+            $code .= $chars[random_int(0, strlen($chars) - 1)];
+        }
+    } while (scrutinCodeExists($code));
+    return $code;
+}
+
+/**
+ * Vérifier si un code de scrutin existe déjà
+ */
+function scrutinCodeExists($code) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('SELECT 1 FROM scrutins WHERE code = ?');
+    $stmt->execute([$code]);
+    return $stmt->fetch() !== false;
+}
+
+/**
+ * Créer un scrutin
+ */
+function createScrutin($data) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        INSERT INTO scrutins (code, titre, resume, notice, debut_at, fin_at,
+            nb_participants_attendus, nb_gagnants, affiche_resultats, est_public, owner_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ');
+    $stmt->execute([
+        $data['code'],
+        $data['titre'],
+        $data['resume'],
+        $data['notice'],
+        $data['debut_at'],
+        $data['fin_at'],
+        $data['nb_participants_attendus'],
+        $data['nb_gagnants'],
+        $data['affiche_resultats'],
+        $data['est_public'],
+        $data['owner_id']
+    ]);
+    return $pdo->lastInsertId();
+}
+
+/**
+ * Récupérer un scrutin par son code
+ */
+function getScrutinByCode($code) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('SELECT * FROM scrutins WHERE code = ?');
+    $stmt->execute([$code]);
+    return $stmt->fetch();
+}
+
+/**
+ * Récupérer un scrutin par son ID
+ */
+function getScrutinById($id) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('SELECT * FROM scrutins WHERE id = ?');
+    $stmt->execute([$id]);
+    return $stmt->fetch();
+}
+
+/**
+ * Récupérer les scrutins d'un utilisateur
+ */
+function getScrutinsByOwner($ownerId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT s.*,
+            (SELECT COUNT(*) FROM questions q WHERE q.scrutin_id = s.id) as nb_questions,
+            (SELECT COUNT(DISTINCT ballot_hash) FROM bulletins b WHERE b.scrutin_id = s.id AND b.est_test = 0) as nb_votes
+        FROM scrutins s
+        WHERE s.owner_id = ?
+        ORDER BY s.created_at DESC
+    ');
+    $stmt->execute([$ownerId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Mettre à jour un scrutin
+ */
+function updateScrutin($id, $data) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        UPDATE scrutins SET
+            titre = ?, resume = ?, notice = ?, debut_at = ?, fin_at = ?,
+            nb_participants_attendus = ?, nb_gagnants = ?, affiche_resultats = ?, est_public = ?
+        WHERE id = ?
+    ');
+    $stmt->execute([
+        $data['titre'],
+        $data['resume'],
+        $data['notice'],
+        $data['debut_at'],
+        $data['fin_at'],
+        $data['nb_participants_attendus'],
+        $data['nb_gagnants'],
+        $data['affiche_resultats'],
+        $data['est_public'],
+        $id
+    ]);
+}
+
+/**
+ * Supprimer un scrutin
+ */
+function deleteScrutin($id) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('DELETE FROM scrutins WHERE id = ?');
+    $stmt->execute([$id]);
+}
+
+/**
+ * Archiver un scrutin
+ */
+function archiveScrutin($id) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('UPDATE scrutins SET est_archive = 1 WHERE id = ?');
+    $stmt->execute([$id]);
+}
+
+// ============================================================================
+// QUESTIONS
+// ============================================================================
+
+/**
+ * Créer une question
+ */
+function createQuestion($data) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        INSERT INTO questions (scrutin_id, echelle_id, type_question, titre, question, lot, ordre, est_obligatoire)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ');
+    $stmt->execute([
+        $data['scrutin_id'],
+        $data['echelle_id'],
+        $data['type_question'],
+        $data['titre'],
+        $data['question'],
+        $data['lot'],
+        $data['ordre'],
+        $data['est_obligatoire']
+    ]);
+    return $pdo->lastInsertId();
+}
+
+/**
+ * Récupérer les questions d'un scrutin
+ */
+function getQuestionsByScrutin($scrutinId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT q.*, e.libelle as echelle_libelle
+        FROM questions q
+        LEFT JOIN echelles e ON e.id = q.echelle_id
+        WHERE q.scrutin_id = ?
+        ORDER BY q.ordre
+    ');
+    $stmt->execute([$scrutinId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Supprimer les questions d'un scrutin
+ */
+function deleteQuestionsByScrutin($scrutinId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('DELETE FROM questions WHERE scrutin_id = ?');
+    $stmt->execute([$scrutinId]);
+}
+
+// ============================================================================
+// RÉPONSES POSSIBLES (pour QCM)
+// ============================================================================
+
+/**
+ * Créer une réponse possible
+ */
+function createReponsePossible($questionId, $libelle, $ordre) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        INSERT INTO reponses_possibles (question_id, libelle, ordre)
+        VALUES (?, ?, ?)
+    ');
+    $stmt->execute([$questionId, $libelle, $ordre]);
+    return $pdo->lastInsertId();
+}
+
+/**
+ * Récupérer les réponses possibles d'une question
+ */
+function getReponsesPossibles($questionId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT * FROM reponses_possibles
+        WHERE question_id = ?
+        ORDER BY ordre
+    ');
+    $stmt->execute([$questionId]);
+    return $stmt->fetchAll();
+}
+
+// ============================================================================
+// MENTIONS (échelle de vote)
+// ============================================================================
+
+/**
+ * Récupérer les mentions d'une échelle
+ */
+function getMentionsByEchelle($echelleId = 1) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT * FROM mentions
+        WHERE echelle_id = ?
+        ORDER BY rang
+    ');
+    $stmt->execute([$echelleId]);
+    return $stmt->fetchAll();
+}
