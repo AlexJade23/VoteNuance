@@ -13,10 +13,13 @@ if (!$user) {
     exit;
 }
 
-$scrutins = getScrutinsByOwner($user['id']);
+$allScrutins = getScrutinsByOwner($user['id']);
 $csrfToken = generateCsrfToken();
 
-// Traitement suppression
+// Afficher les archives ?
+$showArchives = isset($_GET['archives']);
+
+// Traitement actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $error = 'Token de sécurité invalide';
@@ -26,18 +29,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         if ($scrutin && $scrutin['owner_id'] == $user['id']) {
             if ($_POST['action'] === 'delete') {
-                deleteScrutin($scrutinId);
-                header('Location: mes-scrutins.php?deleted=1');
-                exit;
+                // Empecher suppression si votes existent
+                if ($scrutin['nb_votes'] ?? 0 > 0) {
+                    $error = 'Impossible de supprimer un scrutin avec des votes.';
+                } else {
+                    deleteScrutin($scrutinId);
+                    header('Location: mes-scrutins.php?deleted=1');
+                    exit;
+                }
             } elseif ($_POST['action'] === 'archive') {
                 archiveScrutin($scrutinId);
                 header('Location: mes-scrutins.php?archived=1');
                 exit;
+            } elseif ($_POST['action'] === 'unarchive') {
+                unarchiveScrutin($scrutinId);
+                header('Location: mes-scrutins.php?archives&unarchived=1');
+                exit;
             }
         }
     }
-    $scrutins = getScrutinsByOwner($user['id']);
+    $allScrutins = getScrutinsByOwner($user['id']);
 }
+
+// Filtrer selon archives ou non
+$scrutins = array_filter($allScrutins, function($s) use ($showArchives) {
+    return $showArchives ? $s['est_archive'] : !$s['est_archive'];
+});
+$nbArchives = count(array_filter($allScrutins, function($s) { return $s['est_archive']; }));
 
 function getScrutinStatus($scrutin) {
     $now = time();
@@ -271,8 +289,54 @@ function getScrutinStatus($scrutin) {
         }
 
         .btn-view:hover { background: #5a6fd6; }
-        .btn-edit:hover { background: #667eea; color: white; }
-        .btn-delete:hover { background: #dc3545; color: white; }
+        .btn-edit:hover:not(.disabled) { background: #667eea; color: white; }
+        .btn-delete:hover:not(.disabled) { background: #dc3545; color: white; }
+
+        .btn-archive {
+            background: white;
+            color: #6c757d;
+            border: 1px solid #6c757d;
+        }
+        .btn-archive:hover { background: #6c757d; color: white; }
+
+        .btn-unarchive {
+            background: white;
+            color: #28a745;
+            border: 1px solid #28a745;
+        }
+        .btn-unarchive:hover { background: #28a745; color: white; }
+
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed !important;
+            pointer-events: none;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover { background: #5a6268; }
+
+        .btn-outline {
+            background: white;
+            color: #667eea;
+            border: 1px solid #667eea;
+        }
+        .btn-outline:hover { background: #667eea; color: white; }
 
         .empty-state {
             background: white;
@@ -358,31 +422,56 @@ function getScrutinStatus($scrutin) {
     <div class="page-content">
     <div class="container">
         <div class="page-header">
-            <h1>Mes scrutins</h1>
+            <h1><?php echo $showArchives ? 'Scrutins archives' : 'Mes scrutins'; ?></h1>
+            <div class="header-actions">
+                <?php if ($showArchives): ?>
+                <a href="/mes-scrutins.php" class="btn btn-outline">Retour aux scrutins</a>
+                <?php else: ?>
+                <?php if ($nbArchives > 0): ?>
+                <a href="/mes-scrutins.php?archives" class="btn btn-secondary">Archives (<?php echo $nbArchives; ?>)</a>
+                <?php endif; ?>
+                <a href="/scrutin-create.php" class="btn btn-primary">Nouveau scrutin</a>
+                <?php endif; ?>
+            </div>
         </div>
 
+        <?php if (isset($error)): ?>
+        <div class="alert" style="background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+
         <?php if (isset($_GET['deleted'])): ?>
-        <div class="alert alert-success">Le scrutin a été supprimé.</div>
+        <div class="alert alert-success">Le scrutin a ete supprime.</div>
         <?php endif; ?>
 
         <?php if (isset($_GET['archived'])): ?>
-        <div class="alert alert-success">Le scrutin a été archivé.</div>
+        <div class="alert alert-success">Le scrutin a ete archive.</div>
+        <?php endif; ?>
+
+        <?php if (isset($_GET['unarchived'])): ?>
+        <div class="alert alert-success">Le scrutin a ete desarchive.</div>
         <?php endif; ?>
 
         <?php if (isset($_GET['created'])): ?>
-        <div class="alert alert-success">Votre scrutin a été créé avec succès !</div>
+        <div class="alert alert-success">Votre scrutin a ete cree avec succes !</div>
         <?php endif; ?>
 
         <?php if (empty($scrutins)): ?>
         <div class="empty-state">
+            <?php if ($showArchives): ?>
+            <h2>Aucun scrutin archive</h2>
+            <p>Vous n'avez pas de scrutin dans les archives.</p>
+            <a href="/mes-scrutins.php" class="btn btn-primary">Retour aux scrutins</a>
+            <?php else: ?>
             <h2>Aucun scrutin</h2>
-            <p>Vous n'avez pas encore créé de scrutin. Commencez maintenant !</p>
-            <a href="/scrutin-create.php" class="btn btn-primary">Créer mon premier scrutin</a>
+            <p>Vous n'avez pas encore cree de scrutin. Commencez maintenant !</p>
+            <a href="/scrutin-create.php" class="btn btn-primary">Creer mon premier scrutin</a>
+            <?php endif; ?>
         </div>
         <?php else: ?>
         <div class="scrutins-grid">
             <?php foreach ($scrutins as $scrutin):
                 $status = getScrutinStatus($scrutin);
+                $hasVotes = ($scrutin['nb_votes'] ?? 0) > 0;
             ?>
             <div class="scrutin-card">
                 <div class="scrutin-main">
@@ -399,7 +488,7 @@ function getScrutinStatus($scrutin) {
                         <span><?php echo $scrutin['nb_questions']; ?> question(s)</span>
                         <span><?php echo $scrutin['nb_votes']; ?> vote(s)</span>
                         <?php if ($scrutin['debut_at']): ?>
-                        <span>Début : <?php echo date('d/m/Y H:i', strtotime($scrutin['debut_at'])); ?></span>
+                        <span>Debut : <?php echo date('d/m/Y H:i', strtotime($scrutin['debut_at'])); ?></span>
                         <?php endif; ?>
                         <?php if ($scrutin['fin_at']): ?>
                         <span>Fin : <?php echo date('d/m/Y H:i', strtotime($scrutin['fin_at'])); ?></span>
@@ -408,8 +497,30 @@ function getScrutinStatus($scrutin) {
                 </div>
                 <div class="scrutin-actions">
                     <a href="/<?php echo urlencode($scrutin['code']); ?>/v/" class="btn-view">Voir</a>
+                    <?php if ($showArchives): ?>
+                    <!-- Mode archives : bouton desarchiver -->
+                    <form method="POST" style="display: contents;">
+                        <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+                        <input type="hidden" name="action" value="unarchive">
+                        <input type="hidden" name="scrutin_id" value="<?php echo $scrutin['id']; ?>">
+                        <button type="submit" class="btn-unarchive">Desarchiver</button>
+                    </form>
+                    <?php else: ?>
+                    <!-- Mode normal -->
+                    <?php if ($hasVotes): ?>
+                    <span class="btn-edit disabled" title="Impossible de modifier un scrutin avec des votes">Modifier</span>
+                    <span class="btn-delete disabled" title="Impossible de supprimer un scrutin avec des votes">Supprimer</span>
+                    <?php else: ?>
                     <a href="/<?php echo urlencode($scrutin['code']); ?>/s/" class="btn-edit">Modifier</a>
                     <button type="button" class="btn-delete" onclick="confirmDelete(<?php echo $scrutin['id']; ?>, '<?php echo htmlspecialchars(addslashes($scrutin['titre'])); ?>')">Supprimer</button>
+                    <?php endif; ?>
+                    <form method="POST" style="display: contents;">
+                        <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+                        <input type="hidden" name="action" value="archive">
+                        <input type="hidden" name="scrutin_id" value="<?php echo $scrutin['id']; ?>">
+                        <button type="submit" class="btn-archive">Archiver</button>
+                    </form>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endforeach; ?>

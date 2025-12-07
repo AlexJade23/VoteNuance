@@ -25,6 +25,13 @@ if (!$scrutin || $scrutin['owner_id'] != $user['id']) {
     exit;
 }
 
+// Bloquer modification si des votes existent
+$hasVotes = ($scrutin['nb_votes'] ?? 0) > 0;
+if ($hasVotes) {
+    header('Location: /' . urlencode($scrutin['code']) . '/v/?error=votes_exist');
+    exit;
+}
+
 $questions = getQuestionsByScrutin($scrutin['id']);
 $errors = [];
 

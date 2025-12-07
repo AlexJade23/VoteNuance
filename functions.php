@@ -361,6 +361,15 @@ function archiveScrutin($id) {
     $stmt->execute([$id]);
 }
 
+/**
+ * Desarchiver un scrutin
+ */
+function unarchiveScrutin($id) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('UPDATE scrutins SET est_archive = 0 WHERE id = ?');
+    $stmt->execute([$id]);
+}
+
 // ============================================================================
 // QUESTIONS
 // ============================================================================

@@ -68,6 +68,9 @@ if (!$scrutin['est_public'] && $isOwner) {
     $tokens = getTokensByScrutin($scrutin['id']);
 }
 
+// Verifier si des votes existent
+$hasVotes = ($scrutin['nb_votes'] ?? 0) > 0;
+
 $csrfToken = generateCsrfToken();
 
 function getScrutinStatusInfo($scrutin) {
@@ -587,7 +590,11 @@ $typeLabels = [
         <?php endif; ?>
 
         <?php if (isset($_GET['created'])): ?>
-        <div class="alert alert-success">Votre scrutin a été créé avec succès !</div>
+        <div class="alert alert-success">Votre scrutin a ete cree avec succes !</div>
+        <?php endif; ?>
+
+        <?php if (isset($_GET['error']) && $_GET['error'] === 'votes_exist'): ?>
+        <div class="alert alert-info">Impossible de modifier ce scrutin : des votes ont deja ete enregistres.</div>
         <?php endif; ?>
 
         <div class="header">
@@ -598,11 +605,14 @@ $typeLabels = [
             <div class="header-meta">
                 <span>Code : <span class="code-badge"><?php echo htmlspecialchars($scrutin['code']); ?></span></span>
                 <span><?php echo count($questions); ?> question(s)</span>
+                <?php if ($scrutin['nb_votes'] ?? 0): ?>
+                <span><?php echo $scrutin['nb_votes']; ?> vote(s)</span>
+                <?php endif; ?>
                 <?php if ($scrutin['nb_gagnants'] > 1): ?>
                 <span><?php echo $scrutin['nb_gagnants']; ?> gagnants</span>
                 <?php endif; ?>
                 <?php if ($scrutin['debut_at']): ?>
-                <span>Début : <?php echo date('d/m/Y H:i', strtotime($scrutin['debut_at'])); ?></span>
+                <span>Debut : <?php echo date('d/m/Y H:i', strtotime($scrutin['debut_at'])); ?></span>
                 <?php endif; ?>
                 <?php if ($scrutin['fin_at']): ?>
                 <span>Fin : <?php echo date('d/m/Y H:i', strtotime($scrutin['fin_at'])); ?></span>
@@ -610,9 +620,13 @@ $typeLabels = [
             </div>
 
             <?php if ($isOwner): ?>
-            <div class="header-actions" style="margin-top: 20px;">
+            <div class="header-actions" style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <?php if ($hasVotes): ?>
+                <span class="btn btn-secondary" style="opacity: 0.5; cursor: not-allowed;" title="Impossible de modifier un scrutin avec des votes">Modifier</span>
+                <?php else: ?>
                 <a href="/<?php echo urlencode($scrutin['code']); ?>/s/" class="btn btn-secondary">Modifier</a>
-                <a href="/<?php echo urlencode($scrutin['code']); ?>/r/" class="btn btn-primary">Résultats</a>
+                <?php endif; ?>
+                <a href="/<?php echo urlencode($scrutin['code']); ?>/r/" class="btn btn-primary">Resultats</a>
             </div>
             <?php endif; ?>
         </div>
