@@ -775,6 +775,21 @@ $typeLabels = [
                 <p>Generez des jetons pour permettre aux participants de voter.</p>
             </div>
             <?php else: ?>
+
+            <!-- Boutons d'export permanents -->
+            <div style="margin: 20px 0; display: flex; gap: 10px;">
+                <button class="btn btn-secondary" onclick="copyAllTokensFromTable()">Copier tous les liens</button>
+                <button class="btn btn-primary" onclick="exportAllTokensCsv()">Exporter CSV</button>
+            </div>
+
+            <?php
+            $baseUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/' . $scrutin['code'] . '?jeton=';
+            ?>
+            <script>
+            var allTokens = <?php echo json_encode($tokens); ?>;
+            var allTokensBaseUrl = <?php echo json_encode($baseUrl); ?>;
+            </script>
+
             <table class="tokens-table">
                 <thead>
                     <tr>
@@ -786,10 +801,7 @@ $typeLabels = [
                     </tr>
                 </thead>
                 <tbody>
-                    <?php
-                    $baseUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/' . $scrutin['code'] . '?jeton=';
-                    foreach ($tokens as $token):
-                    ?>
+                    <?php foreach ($tokens as $token): ?>
                     <tr>
                         <td><span class="token-code"><?php echo htmlspecialchars($token['code']); ?></span></td>
                         <td>
@@ -864,9 +876,9 @@ $typeLabels = [
             return;
         }
 
-        var csv = 'Jeton,Lien\n';
+        var csv = 'Jeton,Lien,Statut\n';
         generatedTokens.forEach(function(token) {
-            csv += token + ',' + baseUrl + token + '\n';
+            csv += token + ',' + baseUrl + token + ',Disponible\n';
         });
 
         var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -878,6 +890,52 @@ $typeLabels = [
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    // Export CSV de tous les jetons (avec statut)
+    function exportAllTokensCsv() {
+        if (typeof allTokens === 'undefined' || !allTokens.length) {
+            alert('Aucun jeton a exporter');
+            return;
+        }
+
+        var csv = 'Jeton,Lien,Statut,Date utilisation\n';
+        allTokens.forEach(function(token) {
+            var statut = token.est_utilise == 1 ? 'Utilise' : 'Disponible';
+            var dateUtil = token.utilise_at || '';
+            csv += token.code + ',' + allTokensBaseUrl + token.code + ',' + statut + ',' + dateUtil + '\n';
+        });
+
+        var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement('a');
+        var url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'jetons_<?php echo $scrutin['code']; ?>_complet.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Copier tous les liens depuis le tableau
+    function copyAllTokensFromTable() {
+        if (typeof allTokens === 'undefined' || !allTokens.length) {
+            alert('Aucun jeton a copier');
+            return;
+        }
+
+        var liens = allTokens.map(function(token) {
+            return allTokensBaseUrl + token.code;
+        }).join('\n');
+
+        // Copier dans le presse-papier
+        var textarea = document.createElement('textarea');
+        textarea.value = liens;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('Tous les liens ont ete copies !');
     }
     </script>
 </body>
