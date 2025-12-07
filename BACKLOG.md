@@ -91,23 +91,23 @@
 ## Epic 2 : Export des resultats
 
 ### US-004 : Export CSV des resultats
-**Statut** : A faire | **Priorite** : Haute | **Estimation** : S
+**Statut** : Done | **Priorite** : Haute | **Estimation** : S
 
 **En tant que** organisateur de scrutin
 **Je veux** exporter les resultats en CSV
 **Afin de** les analyser dans un tableur ou les archiver
 
 #### Criteres d'acceptation
-- [ ] Bouton "Exporter CSV" sur la page resultats
-- [ ] CSV contient : question, mentions (AC a AP), total, classement
-- [ ] Encodage UTF-8 avec BOM (compatibilite Excel)
-- [ ] Nom fichier : resultats_CODE_DATE.csv
+- [x] Bouton "Exporter CSV" sur la page resultats
+- [x] CSV contient : question, mentions (AC a AP), total, classement
+- [x] Encodage UTF-8 avec BOM (compatibilite Excel)
+- [x] Nom fichier : resultats_CODE_DATE.csv
 
 #### Taches techniques
-- [ ] Ajouter bouton export dans scrutin-results.php
-- [ ] Creer endpoint export-csv.php
-- [ ] Generer CSV avec headers corrects
-- [ ] Inclure resultats QCM et questions ouvertes
+- [x] Ajouter bouton export dans scrutin-results.php
+- [x] Generer CSV via JavaScript (pas besoin d'endpoint separe)
+- [x] Generer CSV avec headers corrects
+- [x] Inclure resultats QCM et questions ouvertes
 
 #### Fichiers concernes
 - scrutin-results.php

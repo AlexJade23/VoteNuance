@@ -361,6 +361,8 @@ $datasetsOrdre = buildChartDatasets($nuanceResultsOrdre, $classementMini, $menti
         .back-link:hover { text-decoration: underline; }
         .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
         .btn-primary { background: #667eea; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
         .participants-count { text-align: center; color: #666; font-size: 14px; margin-bottom: 15px; }
         #mode-portrait { display: none; }
         @media (max-width: 639px) {
@@ -485,11 +487,107 @@ $datasetsOrdre = buildChartDatasets($nuanceResultsOrdre, $classementMini, $menti
         <?php endif; ?>
 
         <?php if ($isOwner): ?>
-        <div class="card" style="text-align: center;">
+        <div class="card" style="text-align: center; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+            <button onclick="exportResultsCsv()" class="btn btn-secondary">Exporter CSV</button>
             <a href="/<?php echo urlencode($code); ?>/s/" class="btn btn-primary">Modifier le scrutin</a>
         </div>
         <?php endif; ?>
     </div>
+
+    <script>
+    // Donnees pour l'export CSV
+    var exportData = {
+        scrutin: <?php echo json_encode([
+            'titre' => $scrutin['titre'],
+            'code' => $scrutin['code'],
+            'nbParticipants' => $nbParticipants,
+            'dateExport' => date('Y-m-d H:i:s')
+        ]); ?>,
+        nuanceResults: <?php echo json_encode($nuanceResults); ?>,
+        mentions: <?php echo json_encode(array_column($mentions, 'libelle')); ?>,
+        otherResults: <?php
+            $otherResults = [];
+            foreach ($questions as $q) {
+                if ($q['type_question'] == 2 || $q['type_question'] == 0) continue;
+                $r = getResultsForQuestion($scrutin['id'], $q['id'], $q['type_question']);
+                if ($r) {
+                    $r['titre'] = $q['titre'];
+                    $otherResults[] = $r;
+                }
+            }
+            echo json_encode($otherResults);
+        ?>
+    };
+
+    function exportResultsCsv() {
+        var csv = '\ufeff'; // BOM UTF-8 pour Excel
+        var d = exportData;
+
+        // En-tete
+        csv += 'Resultats du scrutin: ' + d.scrutin.titre + '\n';
+        csv += 'Code: ' + d.scrutin.code + '\n';
+        csv += 'Participants: ' + d.scrutin.nbParticipants + '\n';
+        csv += 'Export: ' + d.scrutin.dateExport + '\n';
+        csv += '\n';
+
+        // Resultats Vote Nuance
+        if (d.nuanceResults && d.nuanceResults.length > 0) {
+            csv += '=== RESULTATS VOTE NUANCE ===\n';
+            csv += 'Rang,Question,AC,FC,PC,SA,PP,FP,AP,Total,Classement,Taux Partisans Net\n';
+
+            d.nuanceResults.forEach(function(r, idx) {
+                var counts = r.counts || {};
+                csv += (idx + 1) + ',';
+                csv += '"' + (r.titre || '').replace(/"/g, '""') + '",';
+                csv += (counts[1] || 0) + ',';
+                csv += (counts[2] || 0) + ',';
+                csv += (counts[3] || 0) + ',';
+                csv += (counts[4] || 0) + ',';
+                csv += (counts[5] || 0) + ',';
+                csv += (counts[6] || 0) + ',';
+                csv += (counts[7] || 0) + ',';
+                csv += r.total + ',';
+                csv += r.classement.toFixed(1) + ',';
+                csv += r.tauxPartisansNet + '%\n';
+            });
+            csv += '\n';
+        }
+
+        // Autres resultats (QCM, ouvertes)
+        if (d.otherResults && d.otherResults.length > 0) {
+            d.otherResults.forEach(function(r) {
+                if (r.type === 'qcm') {
+                    csv += '=== QCM: ' + r.titre + ' ===\n';
+                    csv += 'Reponse,Nombre,Pourcentage\n';
+                    r.results.forEach(function(item) {
+                        var pct = r.total > 0 ? ((item.count / r.total) * 100).toFixed(1) : 0;
+                        csv += '"' + (item.reponse || '').replace(/"/g, '""') + '",' + item.count + ',' + pct + '%\n';
+                    });
+                    csv += '\n';
+                } else if (r.type === 'open') {
+                    csv += '=== Question ouverte: ' + r.titre + ' ===\n';
+                    csv += 'Reponses\n';
+                    r.responses.forEach(function(resp) {
+                        csv += '"' + (resp || '').replace(/"/g, '""').replace(/\n/g, ' ') + '"\n';
+                    });
+                    csv += '\n';
+                }
+            });
+        }
+
+        // Telecharger
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement('a');
+        var url = URL.createObjectURL(blob);
+        var date = new Date().toISOString().slice(0, 10);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'resultats_' + d.scrutin.code + '_' + date + '.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    </script>
 
     <?php if (!empty($nuanceResults)): ?>
     <script>
