@@ -18,31 +18,68 @@
   - [x] Boutons uniformes (meme taille)
   - [x] Mode portrait : boutons empiles verticalement
   - [x] Parametre ordre_mentions (C->P ou P->C)
-- [x] scrutin-results.php - Page resultats avec graphique barres verticales
+  - [x] Sans Avis selectionne par defaut
+  - [x] Images cliquables avec lightbox plein ecran
+- [x] scrutin-results.php - Page resultats avec graphiques
+
+### Resultats Vote Nuance
+- [x] Algorithme Vote Nuance (different du Jugement Majoritaire)
+  - [x] Classement = AP + FP + PP + (SA/2)
+  - [x] 3 niveaux de departage : niveau1 (AP-AC), niveau2 (FP-FC), niveau3 (PP-PC)
+- [x] Normalisation : ajout Sans Avis manquants pour egaliser les totaux
+- [x] 2 graphiques Chart.js barres empilees horizontales
+  - [x] Graphique 1 : Ordre initial des questions
+  - [x] Graphique 2 : Classement par taux de partisans net
+  - [x] Barre blanche de decalage (alignement visuel)
+- [x] Message mode portrait (ecran < 640px)
+
+### Navigation et UX
+- [x] Menu de navigation unifie (toutes les pages connectees)
+  - [x] Logo "Vote Nuance"
+  - [x] Liens : Mes scrutins, Nouveau, Mon compte, Deconnexion
+  - [x] Style gradient violet
+  - [x] Indicateur page active
+- [x] Suppression des impasses de navigation
+
+### Upload d'images
+- [x] Endpoint upload.php
+  - [x] Verification authentification et CSRF
+  - [x] Types acceptes : JPG, PNG, GIF, WebP
+  - [x] Taille max : 5 Mo
+  - [x] Validation MIME type et getimagesize()
+  - [x] Noms de fichiers uniques (hash hex)
+  - [x] Dossier /uploads/
+- [x] Integration formulaires (scrutin-create.php, scrutin-edit.php)
+  - [x] Bouton "Choisir une image" avec apercu
+  - [x] Barre de progression
+  - [x] Bouton suppression image
+  - [x] Fonctionne pour scrutin ET questions
+- [x] Affichage images dans vote.php
+  - [x] Images centrees
+  - [x] Clic = lightbox plein ecran
+  - [x] Fermeture : clic fond, bouton X, touche Echap
 
 ### Corrections
 - [x] Liens relatifs -> absolus (404 avec URL rewriting)
 - [x] deploy.sh retire du git (securite)
 - [x] README mis a jour
+- [x] Titre resultats : "Classement par taux de partisans net"
+- [x] Suppression ligne stats inutile sous legende
 
 ## A faire
-
-### Graphique resultats (scrutin-results.php)
-- [ ] **PRIORITE** : Corriger le graphique en barres verticales
-  - [ ] Toutes les barres doivent avoir la meme hauteur totale
-  - [ ] Sans Avis : moitie au-dessus, moitie en-dessous de la ligne centrale
-  - [ ] La ligne grise ne doit jamais couper un Pour ou un Contre
-  - [ ] Si pas de Sans Avis : ligne entre Pour et Contre
-  - [ ] **Attente formules utilisateur**
 
 ### Fonctionnalites manquantes
 - [ ] Verification jeton pour scrutins prives
 - [ ] Gestion des lots (prefere du lot)
 - [ ] Export resultats (CSV, PDF?)
 - [ ] Emails de notification
+- [ ] Suppression automatique anciennes images non utilisees
 
-### Base de donnees
-- [ ] Executer migration ordre_mentions sur production
+### Ameliorations possibles
+- [ ] Drag & drop pour upload images
+- [ ] Compression automatique des images
+- [ ] Preview video YouTube/Vimeo
+- [ ] Mode sombre
 
 ## Notes techniques
 
@@ -68,5 +105,18 @@ Branche: main
 6. Franchement Pour (FP) - #7CB342
 7. Absolument Pour (AP) - #388E3C
 
-### Calcul du score
-Score = (AP + FP + PP) - (AC + FC + PC)
+### Calcul Vote Nuance
+```
+Classement = AP + FP + PP + (SA / 2)
+
+Departage en cas d'egalite :
+- Niveau 1 : AP - AC (avis absolus)
+- Niveau 2 : FP - FC (avis francs)
+- Niveau 3 : PP - PC (avis normaux)
+
+Taux partisans net = (Pour - Contre) / Total
+```
+
+### Difference avec Jugement Majoritaire
+Le Jugement Majoritaire utilise la mediane, ignorant 50% des votes.
+Le Vote Nuance prend en compte TOUS les votants ayant un avis.

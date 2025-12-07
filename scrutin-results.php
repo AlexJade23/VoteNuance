@@ -39,7 +39,7 @@ $mentions = getMentionsByEchelle(1);
 // Inverser l'ordre si demandé
 $ordreInverse = $scrutin['ordre_mentions'] ?? 0;
 
-// Récupérer les résultats
+// Récupérer les résultats pour une question
 function getResultsForQuestion($scrutinId, $questionId, $typeQuestion) {
     $pdo = getDbConnection();
 
@@ -55,30 +55,50 @@ function getResultsForQuestion($scrutinId, $questionId, $typeQuestion) {
         $stmt->execute([$scrutinId, $questionId]);
         $counts = [];
         foreach ($stmt->fetchAll() as $row) {
-            $counts[$row['vote_mention']] = $row['count'];
+            $counts[$row['vote_mention']] = (int)$row['count'];
         }
 
-        // Calculer le score
-        $pour = ($counts[7] ?? 0) + ($counts[6] ?? 0) + ($counts[5] ?? 0);
-        $contre = ($counts[1] ?? 0) + ($counts[2] ?? 0) + ($counts[3] ?? 0);
-        $score = $pour - $contre;
+        // Comptages individuels
+        $ac = $counts[1] ?? 0;  // Absolument Contre
+        $fc = $counts[2] ?? 0;  // Franchement Contre
+        $pc = $counts[3] ?? 0;  // Plutôt Contre
+        $sa = $counts[4] ?? 0;  // Sans Avis
+        $pp = $counts[5] ?? 0;  // Plutôt Pour
+        $fp = $counts[6] ?? 0;  // Franchement Pour
+        $ap = $counts[7] ?? 0;  // Absolument Pour
+
+        // Calcul du CLASSEMENT (formule Vote Nuancé) : AP + FP + PP + SA/2
+        $classement = $ap + $fp + $pp + ($sa / 2);
+
+        // Niveaux de départage
+        $niveau1 = $ap - $ac;  // Avis absolus
+        $niveau2 = $fp - $fc;  // Avis francs
+        $niveau3 = $pp - $pc;  // Avis normaux
+
+        // Totaux pour statistiques
+        $pour = $ap + $fp + $pp;
+        $contre = $ac + $fc + $pc;
         $total = array_sum($counts);
-        $neutre = $counts[4] ?? 0;
+
+        // Taux partisans
+        $tauxPartisans = $total > 0 ? round(($pour / $total) * 100, 1) : 0;
+        $tauxOpposants = $total > 0 ? round(($contre / $total) * 100, 1) : 0;
+        $tauxPartisansNet = $total > 0 ? round((($pour - $contre) / $total) * 100, 1) : 0;
 
         return [
             'type' => 'nuance',
             'counts' => $counts,
-            'score' => $score,
+            'classement' => $classement,
+            'niveau1' => $niveau1,
+            'niveau2' => $niveau2,
+            'niveau3' => $niveau3,
             'pour' => $pour,
             'contre' => $contre,
-            'neutre' => $neutre,
+            'neutre' => $sa,
             'total' => $total,
-            // Pour le graphe centré : hauteur au-dessus = pour + moitié SA, hauteur en-dessous = contre + moitié SA
-            'hauteur_haut' => $pour + ($neutre / 2),
-            'hauteur_bas' => $contre + ($neutre / 2),
-            'niveau1' => ($counts[7] ?? 0) - ($counts[1] ?? 0),
-            'niveau2' => ($counts[6] ?? 0) - ($counts[2] ?? 0),
-            'niveau3' => ($counts[5] ?? 0) - ($counts[3] ?? 0)
+            'tauxPartisans' => $tauxPartisans,
+            'tauxOpposants' => $tauxOpposants,
+            'tauxPartisansNet' => $tauxPartisansNet
         ];
     } elseif ($typeQuestion == 1) {
         // Réponse ouverte - liste des réponses
@@ -129,53 +149,135 @@ foreach ($questions as $question) {
         if ($results && $results['total'] > 0) {
             $results['titre'] = $question['titre'];
             $results['id'] = $question['id'];
+            $results['ordre'] = $question['ordre'];
             $nuanceResults[] = $results;
         }
     }
 }
 
-// Trier par score décroissant
+// Normaliser : ajouter des Sans Avis pour que toutes les questions aient le meme nombre de votes
+if (!empty($nuanceResults)) {
+    $maxVotes = max(array_column($nuanceResults, 'total'));
+
+    foreach ($nuanceResults as &$r) {
+        $delta = $maxVotes - $r['total'];
+        if ($delta > 0) {
+            // Ajouter les Sans Avis manquants
+            $r['counts'][4] = ($r['counts'][4] ?? 0) + $delta;
+            $r['neutre'] = $r['counts'][4];
+            $r['total'] = $maxVotes;
+
+            // Recalculer le classement avec les nouveaux SA
+            $ap = $r['counts'][7] ?? 0;
+            $fp = $r['counts'][6] ?? 0;
+            $pp = $r['counts'][5] ?? 0;
+            $sa = $r['counts'][4];
+            $r['classement'] = $ap + $fp + $pp + ($sa / 2);
+
+            // Recalculer les taux
+            $pour = $r['pour'];
+            $contre = $r['contre'];
+            $r['tauxPartisans'] = $maxVotes > 0 ? round(($pour / $maxVotes) * 100, 1) : 0;
+            $r['tauxOpposants'] = $maxVotes > 0 ? round(($contre / $maxVotes) * 100, 1) : 0;
+            $r['tauxPartisansNet'] = $maxVotes > 0 ? round((($pour - $contre) / $maxVotes) * 100, 1) : 0;
+        }
+    }
+    unset($r); // Casser la reference
+}
+
+// Copier pour l'ordre initial (apres normalisation)
+$nuanceResultsOrdre = $nuanceResults;
+
+// Trier par classement décroissant puis niveaux de départage
 usort($nuanceResults, function($a, $b) {
-    if ($a['score'] !== $b['score']) return $b['score'] - $a['score'];
-    if ($a['niveau1'] !== $b['niveau1']) return $b['niveau1'] - $a['niveau1'];
-    if ($a['niveau2'] !== $b['niveau2']) return $b['niveau2'] - $a['niveau2'];
+    if ($a['classement'] != $b['classement']) return $b['classement'] - $a['classement'];
+    if ($a['niveau1'] != $b['niveau1']) return $b['niveau1'] - $a['niveau1'];
+    if ($a['niveau2'] != $b['niveau2']) return $b['niveau2'] - $a['niveau2'];
     return $b['niveau3'] - $a['niveau3'];
 });
 
-// Trouver les extremes pour calibrer le graphe
-$maxHaut = 0;
-$maxBas = 0;
+// Garder l'ordre initial pour le 2e graphique
+usort($nuanceResultsOrdre, function($a, $b) {
+    return $a['ordre'] - $b['ordre'];
+});
+
+// Trouver le classement minimum pour le décalage (barre blanche)
+$classementMini = PHP_FLOAT_MAX;
 foreach ($nuanceResults as $r) {
-    if ($r['hauteur_haut'] > $maxHaut) $maxHaut = $r['hauteur_haut'];
-    if ($r['hauteur_bas'] > $maxBas) $maxBas = $r['hauteur_bas'];
+    if ($r['classement'] < $classementMini) {
+        $classementMini = $r['classement'];
+    }
 }
-$totalHeight = $maxHaut + $maxBas;
+if ($classementMini == PHP_FLOAT_MAX) $classementMini = 0;
+
+// Construire les séries pour Chart.js (comme get_datasets en Python)
+function buildChartDatasets($results, $classementMini, $mentions) {
+    if (empty($results)) return [];
+
+    // Série 1 : barre blanche de décalage
+    $decalages = [];
+    foreach ($results as $r) {
+        $decalages[] = round($r['classement'] - $classementMini, 1);
+    }
+
+    $datasets = [
+        [
+            'label' => ' ',
+            'backgroundColor' => 'white',
+            'borderColor' => 'white',
+            'borderWidth' => 0,
+            'data' => $decalages
+        ]
+    ];
+
+    // Séries 2-8 : mentions dans l'ordre AC -> AP (rang 1 à 7)
+    foreach ($mentions as $mention) {
+        $rang = (int)$mention['rang'];
+        $data = [];
+        foreach ($results as $r) {
+            $data[] = $r['counts'][$rang] ?? 0;
+        }
+        $datasets[] = [
+            'label' => $mention['libelle'],
+            'backgroundColor' => $mention['couleur'],
+            'borderColor' => 'white',
+            'borderWidth' => 1,
+            'data' => $data
+        ];
+    }
+
+    return $datasets;
+}
+
+// Préparer les labels (titres des questions)
+$labelsClassement = [];
+$labelsOrdre = [];
+foreach ($nuanceResults as $idx => $r) {
+    $labelsClassement[] = ($idx + 1);
+}
+foreach ($nuanceResultsOrdre as $idx => $r) {
+    $labelsOrdre[] = ($idx + 1);
+}
+
+$datasetsClassement = buildChartDatasets($nuanceResults, $classementMini, $mentions);
+$datasetsOrdre = buildChartDatasets($nuanceResultsOrdre, $classementMini, $mentions);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Résultats - <?php echo htmlspecialchars($scrutin['titre']); ?></title>
+    <title>Resultats - <?php echo htmlspecialchars($scrutin['titre']); ?></title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: #f5f5f5;
             min-height: 100vh;
             padding: 20px;
         }
-
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
+        .container { max-width: 1200px; margin: 0 auto; }
         .header {
             background: white;
             padding: 25px 30px;
@@ -183,37 +285,12 @@ $totalHeight = $maxHaut + $maxBas;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }
-
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
-        .header h1 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        .header-meta {
-            display: flex;
-            gap: 20px;
-            color: #666;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-
-        .status {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
+        .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+        .header h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
+        .header-meta { display: flex; gap: 20px; color: #666; font-size: 14px; margin-top: 10px; }
+        .status { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
         .status-ended { background: #6c757d; color: white; }
         .status-active { background: #28a745; color: white; }
-
         .card {
             background: white;
             padding: 25px 30px;
@@ -221,7 +298,6 @@ $totalHeight = $maxHaut + $maxBas;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }
-
         .card h2 {
             color: #333;
             font-size: 18px;
@@ -229,173 +305,30 @@ $totalHeight = $maxHaut + $maxBas;
             padding-bottom: 10px;
             border-bottom: 2px solid #667eea;
         }
-
-        /* Graphe en barres verticales centrées */
-        .chart-container {
-            padding: 20px 0;
-        }
-
-        .vertical-bars-chart {
-            display: flex;
-            align-items: stretch;
-            justify-content: space-around;
-            height: 400px;
-            position: relative;
-            padding: 0 10px;
-        }
-
-        .bar-column {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            flex: 1;
-            max-width: 120px;
-            min-width: 60px;
-            position: relative;
-        }
-
-        .bar-wrapper {
-            flex: 1;
+        .chart-wrapper {
             width: 100%;
-            display: flex;
-            flex-direction: column;
+            min-height: 400px;
             position: relative;
         }
-
-        .bar-top {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            align-items: center;
-        }
-
-        .bar-bottom {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-        }
-
-        .bar-segment {
-            width: 50px;
-            min-height: 2px;
-            position: relative;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-
-        .bar-segment:hover {
-            opacity: 0.8;
-        }
-
-        .bar-label {
-            font-size: 11px;
-            color: #333;
-            text-align: center;
-            padding: 8px 4px 0;
-            word-wrap: break-word;
+        .chart-wrapper canvas {
             max-width: 100%;
-            line-height: 1.2;
         }
-
-        .bar-score {
-            font-size: 13px;
-            font-weight: bold;
-            text-align: center;
-            padding: 4px 0;
-        }
-
-        .bar-score.positive { color: #28a745; }
-        .bar-score.negative { color: #dc3545; }
-        .bar-score.neutral { color: #6c757d; }
-
-        /* Ligne centrale (Sans Avis) */
-        .center-line {
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #9E9E9E;
-            z-index: 1;
-        }
-
-        /* Tooltip */
-        .tooltip {
-            position: absolute;
-            background: rgba(0,0,0,0.85);
-            color: white;
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-size: 13px;
-            pointer-events: none;
-            z-index: 100;
-            white-space: nowrap;
-            display: none;
-        }
-
-        .tooltip.visible {
-            display: block;
-        }
-
-        .tooltip-title {
-            font-weight: bold;
-            margin-bottom: 6px;
-            border-bottom: 1px solid rgba(255,255,255,0.3);
-            padding-bottom: 4px;
-        }
-
-        .tooltip-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 15px;
-            margin: 3px 0;
-        }
-
-        .tooltip-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 2px;
-            display: inline-block;
-            margin-right: 6px;
-            vertical-align: middle;
-        }
-
-        /* Légende */
-        .legend {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
+        .legende {
+            display: inline;
             font-size: 12px;
             color: #555;
+            margin-right: 5px;
         }
-
-        .legend-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 3px;
-            margin-right: 6px;
+        .questions-list {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
         }
-
-        /* Autres types de résultats */
-        .result-card {
-            border-left: 4px solid #667eea;
-        }
-
-        .question-header {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 20px;
-        }
-
+        .result-card { border-left: 4px solid #667eea; }
+        .question-header { display: flex; align-items: flex-start; margin-bottom: 20px; }
         .question-number {
             background: #667eea;
             color: white;
@@ -409,44 +342,12 @@ $totalHeight = $maxHaut + $maxBas;
             margin-right: 15px;
             flex-shrink: 0;
         }
-
-        .question-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        /* QCM résultats */
-        .qcm-result {
-            margin-bottom: 12px;
-        }
-
-        .qcm-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-
-        .qcm-bar-container {
-            height: 20px;
-            background: #e9ecef;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .qcm-bar-fill {
-            height: 100%;
-            background: #667eea;
-            border-radius: 10px;
-        }
-
-        /* Réponses ouvertes */
-        .open-responses {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
+        .question-title { font-size: 18px; font-weight: 600; color: #333; }
+        .qcm-result { margin-bottom: 12px; }
+        .qcm-label { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
+        .qcm-bar-container { height: 20px; background: #e9ecef; border-radius: 10px; overflow: hidden; }
+        .qcm-bar-fill { height: 100%; background: #667eea; border-radius: 10px; }
+        .open-responses { max-height: 300px; overflow-y: auto; }
         .open-response-item {
             padding: 12px 15px;
             background: #f8f9fa;
@@ -455,79 +356,36 @@ $totalHeight = $maxHaut + $maxBas;
             font-size: 14px;
             line-height: 1.5;
         }
-
-        .no-responses {
-            color: #666;
-            font-style: italic;
-            text-align: center;
-            padding: 20px;
-        }
-
-        /* Navigation */
-        .back-link {
-            display: inline-block;
-            margin-bottom: 20px;
-            color: #667eea;
-            text-decoration: none;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .participants-count {
-            text-align: center;
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 15px;
-        }
-
-        @media (max-width: 600px) {
-            .vertical-bars-chart {
-                height: 300px;
-            }
-            .bar-segment {
-                width: 35px;
-            }
-            .bar-label {
-                font-size: 9px;
-            }
+        .no-responses { color: #666; font-style: italic; text-align: center; padding: 20px; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #667eea; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #667eea; color: white; }
+        .participants-count { text-align: center; color: #666; font-size: 14px; margin-bottom: 15px; }
+        #mode-portrait { display: none; }
+        @media (max-width: 639px) {
+            #mode-paysage, #mode-paysage2 { display: none !important; }
+            #mode-portrait { display: block; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="/<?php echo urlencode($code); ?>/v/" class="back-link">← Retour au scrutin</a>
+        <a href="/<?php echo urlencode($code); ?>/v/" class="back-link">&#8592; Retour au scrutin</a>
 
         <div class="header">
             <div class="header-top">
                 <div>
-                    <h1>Résultats : <?php echo htmlspecialchars($scrutin['titre']); ?></h1>
+                    <h1>Resultats : <?php echo htmlspecialchars($scrutin['titre']); ?></h1>
                     <div class="header-meta">
                         <span><?php echo $nbParticipants; ?> votant<?php echo $nbParticipants > 1 ? 's' : ''; ?></span>
                         <?php if ($scrutin['fin_at']): ?>
-                        <span>Clôture : <?php echo date('d/m/Y H:i', strtotime($scrutin['fin_at'])); ?></span>
+                        <span>Cloture : <?php echo date('d/m/Y H:i', strtotime($scrutin['fin_at'])); ?></span>
                         <?php endif; ?>
                     </div>
                 </div>
                 <span class="status <?php echo $isEnded ? 'status-ended' : 'status-active'; ?>">
-                    <?php echo $isEnded ? 'Terminé' : 'En cours'; ?>
+                    <?php echo $isEnded ? 'Termine' : 'En cours'; ?>
                 </span>
             </div>
         </div>
@@ -535,151 +393,54 @@ $totalHeight = $maxHaut + $maxBas;
         <?php if ($nbParticipants == 0): ?>
         <div class="card">
             <p style="text-align: center; color: #666; padding: 40px;">
-                Aucun vote n'a encore été enregistré.
+                Aucun vote n'a encore ete enregistre.
             </p>
         </div>
         <?php else: ?>
 
-        <?php if (!empty($nuanceResults)): ?>
-        <div class="card">
-            <h2>Vote nuancé - Vue d'ensemble</h2>
-            <div class="participants-count"><?php echo $nbParticipants; ?> votant<?php echo $nbParticipants > 1 ? 's' : ''; ?></div>
-
-            <div class="chart-container">
-                <div class="vertical-bars-chart" id="mainChart">
-                    <?php
-                    // Position de la ligne centrale (en % depuis le haut)
-                    $centerLinePos = $totalHeight > 0 ? ($maxHaut / $totalHeight) * 100 : 50;
-                    ?>
-                    <div class="center-line" style="top: <?php echo $centerLinePos; ?>%;"></div>
-
-                    <?php foreach ($nuanceResults as $idx => $r):
-                        // Calculer les hauteurs en pixels relatifs
-                        $topHeight = $totalHeight > 0 ? ($r['hauteur_haut'] / $totalHeight) * 100 : 0;
-                        $bottomHeight = $totalHeight > 0 ? ($r['hauteur_bas'] / $totalHeight) * 100 : 0;
-
-                        // Couleurs des mentions
-                        $colors = [
-                            7 => '#388E3C', // AP
-                            6 => '#7CB342', // FP
-                            5 => '#C0CA33', // PP
-                            4 => '#9E9E9E', // SA
-                            3 => '#FBC02D', // PC
-                            2 => '#F57C00', // FC
-                            1 => '#D32F2F'  // AC
-                        ];
-
-                        // Calcul des hauteurs individuelles pour chaque segment
-                        $countAP = $r['counts'][7] ?? 0;
-                        $countFP = $r['counts'][6] ?? 0;
-                        $countPP = $r['counts'][5] ?? 0;
-                        $countSA = $r['counts'][4] ?? 0;
-                        $countPC = $r['counts'][3] ?? 0;
-                        $countFC = $r['counts'][2] ?? 0;
-                        $countAC = $r['counts'][1] ?? 0;
-
-                        $halfSA = $countSA / 2;
-
-                        // Hauteur totale utilisée pour proportions
-                        $hauteurHaut = $countAP + $countFP + $countPP + $halfSA;
-                        $hauteurBas = $countPC + $countFC + $countAC + $halfSA;
-                    ?>
-                    <div class="bar-column" data-question="<?php echo $idx; ?>">
-                        <div class="bar-wrapper">
-                            <!-- Partie haute : du haut vers le centre = AP, FP, PP, demi-SA -->
-                            <div class="bar-top" style="height: <?php echo $centerLinePos; ?>%; justify-content: flex-end;">
-                                <?php
-                                // Ordre d'affichage du haut vers le bas : AP, FP, PP, SA/2
-                                $segmentsHaut = [
-                                    ['rang' => 7, 'count' => $countAP, 'color' => $colors[7]],
-                                    ['rang' => 6, 'count' => $countFP, 'color' => $colors[6]],
-                                    ['rang' => 5, 'count' => $countPP, 'color' => $colors[5]],
-                                    ['rang' => 4, 'count' => $halfSA, 'color' => $colors[4]] // demi SA
-                                ];
-                                foreach ($segmentsHaut as $seg):
-                                    if ($seg['count'] <= 0) continue;
-                                    $segHeight = $hauteurHaut > 0 ? ($seg['count'] / $hauteurHaut) * $topHeight : 0;
-                                    if ($segHeight < 0.3) continue;
-                                ?>
-                                <div class="bar-segment"
-                                     style="height: <?php echo $segHeight; ?>%; background: <?php echo $seg['color']; ?>;"
-                                     data-rang="<?php echo $seg['rang']; ?>">
-                                </div>
-                                <?php endforeach; ?>
-                            </div>
-
-                            <!-- Partie basse : du centre vers le bas = demi-SA, PC, FC, AC -->
-                            <div class="bar-bottom" style="height: <?php echo 100 - $centerLinePos; ?>%;">
-                                <?php
-                                // Ordre d'affichage du haut vers le bas : SA/2, PC, FC, AC
-                                $segmentsBas = [
-                                    ['rang' => 4, 'count' => $halfSA, 'color' => $colors[4]], // demi SA
-                                    ['rang' => 3, 'count' => $countPC, 'color' => $colors[3]],
-                                    ['rang' => 2, 'count' => $countFC, 'color' => $colors[2]],
-                                    ['rang' => 1, 'count' => $countAC, 'color' => $colors[1]]
-                                ];
-                                foreach ($segmentsBas as $seg):
-                                    if ($seg['count'] <= 0) continue;
-                                    $segHeight = $hauteurBas > 0 ? ($seg['count'] / $hauteurBas) * $bottomHeight : 0;
-                                    if ($segHeight < 0.3) continue;
-                                ?>
-                                <div class="bar-segment"
-                                     style="height: <?php echo $segHeight; ?>%; background: <?php echo $seg['color']; ?>;"
-                                     data-rang="<?php echo $seg['rang']; ?>">
-                                </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-
-                        <div class="bar-score <?php echo $r['score'] > 0 ? 'positive' : ($r['score'] < 0 ? 'negative' : 'neutral'); ?>">
-                            <?php echo ($r['score'] > 0 ? '+' : '') . $r['score']; ?>
-                        </div>
-                        <div class="bar-label"><?php echo htmlspecialchars(mb_substr($r['titre'], 0, 40)); ?><?php echo mb_strlen($r['titre']) > 40 ? '...' : ''; ?></div>
-                    </div>
-                    <?php endforeach; ?>
-
-                    <div class="tooltip" id="tooltip"></div>
-                </div>
-
-                <div class="legend">
-                    <?php
-                    $legendItems = $ordreInverse
-                        ? [
-                            ['color' => '#388E3C', 'label' => 'Absolument Pour'],
-                            ['color' => '#7CB342', 'label' => 'Franchement Pour'],
-                            ['color' => '#C0CA33', 'label' => 'Plutôt Pour'],
-                            ['color' => '#9E9E9E', 'label' => 'Sans Avis'],
-                            ['color' => '#FBC02D', 'label' => 'Plutôt Contre'],
-                            ['color' => '#F57C00', 'label' => 'Franchement Contre'],
-                            ['color' => '#D32F2F', 'label' => 'Absolument Contre']
-                        ]
-                        : [
-                            ['color' => '#D32F2F', 'label' => 'Absolument Contre'],
-                            ['color' => '#F57C00', 'label' => 'Franchement Contre'],
-                            ['color' => '#FBC02D', 'label' => 'Plutôt Contre'],
-                            ['color' => '#9E9E9E', 'label' => 'Sans Avis'],
-                            ['color' => '#C0CA33', 'label' => 'Plutôt Pour'],
-                            ['color' => '#7CB342', 'label' => 'Franchement Pour'],
-                            ['color' => '#388E3C', 'label' => 'Absolument Pour']
-                        ];
-                    foreach ($legendItems as $item):
-                    ?>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: <?php echo $item['color']; ?>;"></div>
-                        <?php echo $item['label']; ?>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
+        <?php if (!empty($nuanceResultsOrdre)): ?>
+        <!-- Graphique 1 : Ordre initial des questions -->
+        <div id="mode-paysage2" class="card">
+            <h2>Classement dans l'ordre initial des questions</h2>
+            <div class="chart-wrapper">
+                <canvas id="chartOrdre"></canvas>
+            </div>
+            <div class="questions-list">
+                <?php foreach ($nuanceResultsOrdre as $idx => $r): ?>
+                <span class="legende"><?php echo ($idx + 1); ?>. <?php echo htmlspecialchars($r['titre']); ?> |</span>
+                <?php endforeach; ?>
             </div>
         </div>
         <?php endif; ?>
+
+        <?php if (!empty($nuanceResults)): ?>
+        <!-- Graphique 2 : Tri par taux de partisans net -->
+        <div id="mode-paysage" class="card">
+            <h2>Classement par taux de partisans net (1er a gauche... dernier a droite)</h2>
+            <div class="chart-wrapper">
+                <canvas id="chartClassement"></canvas>
+            </div>
+            <div class="questions-list">
+                <?php foreach ($nuanceResults as $idx => $r): ?>
+                <span class="legende"><?php echo ($idx + 1); ?>. <?php echo htmlspecialchars($r['titre']); ?> |</span>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <div id="mode-portrait" class="card">
+            <p style="text-align: center; padding: 20px;">
+                Un ecran en mode Paysage d'au moins 640px de large est necessaire pour afficher correctement les resultats.
+                Merci de tourner votre ecran ou de regarder sur un ecran d'ordinateur.
+            </p>
+        </div>
 
         <?php
         // Autres types de questions (QCM, ouvertes)
         $questionNum = 0;
         foreach ($questions as $question):
-            if ($question['type_question'] == 2) continue; // Ignorer séparateurs
-            if ($question['type_question'] == 0) continue; // Déjà affiché dans le graphe
+            if ($question['type_question'] == 2) continue; // Ignorer separateurs
+            if ($question['type_question'] == 0) continue; // Deja affiche dans le graphe
             $questionNum++;
             $results = getResultsForQuestion($scrutin['id'], $question['id'], $question['type_question']);
             if (!$results) continue;
@@ -692,7 +453,6 @@ $totalHeight = $maxHaut + $maxBas;
             </div>
 
             <?php if ($results['type'] === 'qcm'): ?>
-            <!-- Résultats QCM -->
             <?php foreach ($results['results'] as $r):
                 $percent = $results['total'] > 0 ? ($r['count'] / $results['total']) * 100 : 0;
             ?>
@@ -708,9 +468,8 @@ $totalHeight = $maxHaut + $maxBas;
             <?php endforeach; ?>
 
             <?php elseif ($results['type'] === 'open'): ?>
-            <!-- Réponses ouvertes -->
             <?php if (empty($results['responses'])): ?>
-            <div class="no-responses">Aucune réponse</div>
+            <div class="no-responses">Aucune reponse</div>
             <?php else: ?>
             <div class="open-responses">
                 <?php foreach ($results['responses'] as $response): ?>
@@ -732,90 +491,57 @@ $totalHeight = $maxHaut + $maxBas;
         <?php endif; ?>
     </div>
 
+    <?php if (!empty($nuanceResults)): ?>
     <script>
-    (function() {
-        const chart = document.getElementById('mainChart');
-        if (!chart) return;
+    // Donnees pour les graphiques
+    const datasetsClassement = <?php echo json_encode($datasetsClassement); ?>;
+    const datasetsOrdre = <?php echo json_encode($datasetsOrdre); ?>;
+    const labelsClassement = <?php echo json_encode($labelsClassement); ?>;
+    const labelsOrdre = <?php echo json_encode($labelsOrdre); ?>;
 
-        const tooltip = document.getElementById('tooltip');
-        const data = <?php echo json_encode(array_map(function($r) {
-            return [
-                'titre' => $r['titre'],
-                'counts' => $r['counts'],
-                'pour' => $r['pour'],
-                'contre' => $r['contre'],
-                'neutre' => $r['neutre'],
-                'score' => $r['score']
-            ];
-        }, $nuanceResults)); ?>;
-
-        const mentionLabels = {
-            1: 'Absolument Contre',
-            2: 'Franchement Contre',
-            3: 'Plutôt Contre',
-            4: 'Sans Avis',
-            5: 'Plutôt Pour',
-            6: 'Franchement Pour',
-            7: 'Absolument Pour'
-        };
-
-        const colors = {
-            1: '#D32F2F',
-            2: '#F57C00',
-            3: '#FBC02D',
-            4: '#9E9E9E',
-            5: '#C0CA33',
-            6: '#7CB342',
-            7: '#388E3C'
-        };
-
-        chart.addEventListener('mousemove', function(e) {
-            const column = e.target.closest('.bar-column');
-            if (!column) {
-                tooltip.classList.remove('visible');
-                return;
+    // Configuration commune Chart.js
+    const chartOptions = {
+        animation: { duration: 2000, easing: "easeOutCirc" },
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'x',
+        scales: {
+            x: { stacked: true },
+            y: { stacked: true, display: false }
+        },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        if (context.dataset.label === ' ') return null;
+                        return context.dataset.label + ': ' + context.parsed.y;
+                    }
+                }
             }
+        }
+    };
 
-            const idx = parseInt(column.dataset.question);
-            const d = data[idx];
-            if (!d) return;
-
-            let html = '<div class="tooltip-title">' + d.titre + '</div>';
-
-            // Afficher les mentions dans l'ordre
-            for (let rang = 7; rang >= 1; rang--) {
-                const count = d.counts[rang] || 0;
-                html += '<div class="tooltip-row">';
-                html += '<span><span class="tooltip-color" style="background:' + colors[rang] + '"></span>' + mentionLabels[rang] + '</span>';
-                html += '<span>' + count + '</span>';
-                html += '</div>';
-            }
-
-            html += '<div class="tooltip-row" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.3);">';
-            html += '<span><strong>Pour</strong></span><span>' + d.pour + '</span></div>';
-            html += '<div class="tooltip-row"><span><strong>Contre</strong></span><span>' + d.contre + '</span></div>';
-            html += '<div class="tooltip-row"><span><strong>Score</strong></span><span>' + (d.score > 0 ? '+' : '') + d.score + '</span></div>';
-
-            tooltip.innerHTML = html;
-            tooltip.classList.add('visible');
-
-            // Position
-            const rect = chart.getBoundingClientRect();
-            let x = e.clientX - rect.left + 15;
-            let y = e.clientY - rect.top - 10;
-
-            if (x + tooltip.offsetWidth > rect.width) {
-                x = e.clientX - rect.left - tooltip.offsetWidth - 15;
-            }
-
-            tooltip.style.left = x + 'px';
-            tooltip.style.top = y + 'px';
+    // Graphique ordre initial
+    const ctxOrdre = document.getElementById('chartOrdre');
+    if (ctxOrdre) {
+        new Chart(ctxOrdre.getContext('2d'), {
+            type: 'bar',
+            data: { labels: labelsOrdre, datasets: datasetsOrdre },
+            options: chartOptions
         });
+    }
 
-        chart.addEventListener('mouseleave', function() {
-            tooltip.classList.remove('visible');
+    // Graphique par classement
+    const ctxClassement = document.getElementById('chartClassement');
+    if (ctxClassement) {
+        new Chart(ctxClassement.getContext('2d'), {
+            type: 'bar',
+            data: { labels: labelsClassement, datasets: datasetsClassement },
+            options: chartOptions
         });
-    })();
+    }
     </script>
+    <?php endif; ?>
 </body>
 </html>

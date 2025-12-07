@@ -498,11 +498,88 @@ $typeLabels = [
             color: #667eea;
             text-decoration: none;
         }
+
+        /* Images cliquables */
+        .clickable-image {
+            display: block;
+            margin: 0 auto 15px auto;
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .clickable-image:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .question-image {
+            max-height: 150px;
+        }
+
+        /* Lightbox */
+        .lightbox-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .lightbox-overlay.active {
+            display: flex;
+        }
+
+        .lightbox-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+
+        .lightbox-content img {
+            max-width: 100%;
+            max-height: 90vh;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            color: #333;
+        }
+
+        .lightbox-close:hover {
+            background: #f0f0f0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
+            <?php if (!empty($scrutin['image_url'])): ?>
+            <img src="<?php echo htmlspecialchars($scrutin['image_url']); ?>" alt="" class="clickable-image" onclick="openLightbox(this.src)">
+            <?php endif; ?>
             <h1><?php echo htmlspecialchars($scrutin['titre']); ?></h1>
             <?php if ($scrutin['resume']): ?>
             <p><?php echo nl2br(htmlspecialchars($scrutin['resume'])); ?></p>
@@ -577,6 +654,9 @@ $typeLabels = [
             <?php elseif ($question['type_question'] == 0): ?>
             <!-- Vote nuancé -->
             <div class="question-card">
+                <?php if (!empty($question['image_url'])): ?>
+                <img src="<?php echo htmlspecialchars($question['image_url']); ?>" alt="" class="clickable-image question-image" onclick="openLightbox(this.src)">
+                <?php endif; ?>
                 <div class="question-header">
                     <span class="question-number"><?php echo $i + 1; ?></span>
                     <div class="question-content">
@@ -594,7 +674,8 @@ $typeLabels = [
                     <div class="mention-option">
                         <input type="radio" name="vote[<?php echo $question['id']; ?>]"
                                id="q<?php echo $question['id']; ?>_m<?php echo $mention['rang']; ?>"
-                               value="<?php echo $mention['rang']; ?>">
+                               value="<?php echo $mention['rang']; ?>"
+                               <?php echo ($mention['rang'] == 4) ? 'checked' : ''; ?>>
                         <label for="q<?php echo $question['id']; ?>_m<?php echo $mention['rang']; ?>"
                                style="background: <?php echo $mention['couleur']; ?>;">
                             <?php echo htmlspecialchars($mention['libelle']); ?>
@@ -607,6 +688,9 @@ $typeLabels = [
             <?php elseif ($question['type_question'] == 1): ?>
             <!-- Réponse ouverte -->
             <div class="question-card">
+                <?php if (!empty($question['image_url'])): ?>
+                <img src="<?php echo htmlspecialchars($question['image_url']); ?>" alt="" class="clickable-image question-image" onclick="openLightbox(this.src)">
+                <?php endif; ?>
                 <div class="question-header">
                     <span class="question-number"><?php echo $i + 1; ?></span>
                     <div class="question-content">
@@ -629,6 +713,9 @@ $typeLabels = [
             <!-- QCM -->
             <?php $reponsesPossibles = getReponsesPossibles($question['id']); ?>
             <div class="question-card">
+                <?php if (!empty($question['image_url'])): ?>
+                <img src="<?php echo htmlspecialchars($question['image_url']); ?>" alt="" class="clickable-image question-image" onclick="openLightbox(this.src)">
+                <?php endif; ?>
                 <div class="question-header">
                     <span class="question-number"><?php echo $i + 1; ?></span>
                     <div class="question-content">
@@ -657,6 +744,9 @@ $typeLabels = [
             <?php elseif ($question['type_question'] == 3): ?>
             <!-- Préféré du lot (simplifié comme QCM pour l'instant) -->
             <div class="question-card">
+                <?php if (!empty($question['image_url'])): ?>
+                <img src="<?php echo htmlspecialchars($question['image_url']); ?>" alt="" class="clickable-image question-image" onclick="openLightbox(this.src)">
+                <?php endif; ?>
                 <div class="question-header">
                     <span class="question-number"><?php echo $i + 1; ?></span>
                     <div class="question-content">
@@ -684,5 +774,40 @@ $typeLabels = [
         </form>
         <?php endif; ?>
     </div>
+
+    <!-- Lightbox -->
+    <div class="lightbox-overlay" id="lightbox" onclick="closeLightbox(event)">
+        <div class="lightbox-content">
+            <img src="" alt="" id="lightbox-img">
+            <button class="lightbox-close" onclick="closeLightbox(event)">×</button>
+        </div>
+    </div>
+
+    <script>
+    function openLightbox(src) {
+        const lightbox = document.getElementById('lightbox');
+        const img = document.getElementById('lightbox-img');
+        img.src = src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox(e) {
+        if (e.target.classList.contains('lightbox-overlay') || e.target.classList.contains('lightbox-close')) {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Fermer avec Echap
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+    </script>
 </body>
 </html>

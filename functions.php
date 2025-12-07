@@ -257,15 +257,16 @@ function scrutinCodeExists($code) {
 function createScrutin($data) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('
-        INSERT INTO scrutins (code, titre, resume, notice, debut_at, fin_at,
+        INSERT INTO scrutins (code, titre, resume, notice, image_url, debut_at, fin_at,
             nb_participants_attendus, nb_gagnants, affiche_resultats, est_public, ordre_mentions, owner_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
         $data['code'],
         $data['titre'],
         $data['resume'],
         $data['notice'],
+        $data['image_url'] ?? null,
         $data['debut_at'],
         $data['fin_at'],
         $data['nb_participants_attendus'],
@@ -322,7 +323,7 @@ function updateScrutin($id, $data) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('
         UPDATE scrutins SET
-            titre = ?, resume = ?, notice = ?, debut_at = ?, fin_at = ?,
+            titre = ?, resume = ?, notice = ?, image_url = ?, debut_at = ?, fin_at = ?,
             nb_participants_attendus = ?, nb_gagnants = ?, affiche_resultats = ?, est_public = ?, ordre_mentions = ?
         WHERE id = ?
     ');
@@ -330,6 +331,7 @@ function updateScrutin($id, $data) {
         $data['titre'],
         $data['resume'],
         $data['notice'],
+        $data['image_url'] ?? null,
         $data['debut_at'],
         $data['fin_at'],
         $data['nb_participants_attendus'],
@@ -369,8 +371,8 @@ function archiveScrutin($id) {
 function createQuestion($data) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('
-        INSERT INTO questions (scrutin_id, echelle_id, type_question, titre, question, lot, ordre, est_obligatoire)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO questions (scrutin_id, echelle_id, type_question, titre, question, image_url, lot, ordre, est_obligatoire)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
         $data['scrutin_id'],
@@ -378,6 +380,7 @@ function createQuestion($data) {
         $data['type_question'],
         $data['titre'],
         $data['question'],
+        $data['image_url'] ?? null,
         $data['lot'],
         $data['ordre'],
         $data['est_obligatoire']
@@ -457,4 +460,100 @@ function getMentionsByEchelle($echelleId = 1) {
     ');
     $stmt->execute([$echelleId]);
     return $stmt->fetchAll();
+}
+
+// ============================================================================
+// NAVIGATION
+// ============================================================================
+
+/**
+ * Afficher le menu de navigation unifié
+ */
+function renderNavigation($activePage = '') {
+    $isLoggedIn = isLoggedIn();
+    $user = $isLoggedIn ? getCurrentUser() : null;
+
+    $html = '<nav class="main-nav">';
+    $html .= '<div class="nav-container">';
+    $html .= '<a href="/" class="nav-brand">Vote Nuance</a>';
+    $html .= '<div class="nav-links">';
+
+    if ($isLoggedIn && $user) {
+        $html .= '<a href="/mes-scrutins.php" class="nav-link' . ($activePage === 'mes-scrutins' ? ' active' : '') . '">Mes scrutins</a>';
+        $html .= '<a href="/scrutin-create.php" class="nav-link' . ($activePage === 'create' ? ' active' : '') . '">Nouveau</a>';
+        $html .= '<a href="/dashboard.php" class="nav-link' . ($activePage === 'dashboard' ? ' active' : '') . '">Mon compte</a>';
+        $html .= '<a href="/logout.php" class="nav-link nav-logout">Deconnexion</a>';
+    } else {
+        $html .= '<a href="/login.php" class="nav-link">Connexion</a>';
+    }
+
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</nav>';
+
+    return $html;
+}
+
+/**
+ * CSS pour le menu de navigation
+ */
+function getNavigationCSS() {
+    return '
+    .main-nav {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 0 20px;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .nav-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 56px;
+    }
+    .nav-brand {
+        color: white;
+        font-size: 18px;
+        font-weight: 700;
+        text-decoration: none;
+    }
+    .nav-links {
+        display: flex;
+        gap: 5px;
+    }
+    .nav-link {
+        color: rgba(255,255,255,0.9);
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .nav-link:hover {
+        background: rgba(255,255,255,0.15);
+        color: white;
+    }
+    .nav-link.active {
+        background: rgba(255,255,255,0.2);
+        color: white;
+    }
+    .nav-logout {
+        margin-left: 10px;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+    .nav-logout:hover {
+        background: rgba(255,255,255,0.25);
+    }
+    @media (max-width: 600px) {
+        .nav-container { height: auto; flex-wrap: wrap; padding: 10px 0; }
+        .nav-brand { width: 100%; text-align: center; margin-bottom: 10px; }
+        .nav-links { width: 100%; justify-content: center; flex-wrap: wrap; }
+        .nav-link { padding: 6px 12px; font-size: 13px; }
+    }
+    ';
 }

@@ -28,49 +28,31 @@ if (!$user) {
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: #f5f5f5;
             min-height: 100vh;
+        }
+
+        .page-content {
             padding: 20px;
         }
+
+        <?php echo getNavigationCSS(); ?>
         
         .container {
             max-width: 800px;
             margin: 0 auto;
         }
         
-        .header {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .page-header {
             margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
-        
-        .header h1 {
+
+        .page-header h1 {
             color: #333;
             font-size: 28px;
-        }
-        
-        .logout-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .logout-btn:hover {
-            background: #c82333;
         }
         
         .card {
@@ -164,10 +146,12 @@ if (!$user) {
     </style>
 </head>
 <body>
+    <?php echo renderNavigation('dashboard'); ?>
+
+    <div class="page-content">
     <div class="container">
-        <div class="header">
-            <h1>Tableau de bord</h1>
-            <a href="logout.php" class="logout-btn">Déconnexion</a>
+        <div class="page-header">
+            <h1>Mon compte</h1>
         </div>
         
         <div class="success-message">
@@ -244,6 +228,7 @@ if (!$user) {
                 <a href="my-data.php">Gérer mes données</a>
             </div>
         </div>
+    </div>
     </div>
 </body>
 </html>

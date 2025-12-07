@@ -75,40 +75,26 @@ $csrfToken = generateCsrfToken();
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: #f5f5f5;
             min-height: 100vh;
+        }
+
+        .page-content {
             padding: 20px;
         }
+
+        <?php echo getNavigationCSS(); ?>
         
         .container {
             max-width: 800px;
             margin: 0 auto;
         }
         
-        .header {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .page-header {
             margin-bottom: 20px;
         }
-        
-        .header h1 {
+
+        .page-header h1 {
             color: #333;
             font-size: 28px;
-            margin-bottom: 10px;
-        }
-        
-        .breadcrumb {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .breadcrumb a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        
-        .breadcrumb a:hover {
-            text-decoration: underline;
         }
         
         .card {
@@ -254,12 +240,12 @@ $csrfToken = generateCsrfToken();
     </style>
 </head>
 <body>
+    <?php echo renderNavigation('dashboard'); ?>
+
+    <div class="page-content">
     <div class="container">
-        <div class="header">
+        <div class="page-header">
             <h1>Mes données personnelles</h1>
-            <div class="breadcrumb">
-                <a href="dashboard.php">← Retour au tableau de bord</a>
-            </div>
         </div>
         
         <?php if ($message): ?>
@@ -326,6 +312,7 @@ $csrfToken = generateCsrfToken();
                 </form>
             </div>
         </div>
+    </div>
     </div>
 </body>
 </html>

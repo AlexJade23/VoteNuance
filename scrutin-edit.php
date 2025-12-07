@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $titre = trim($_POST['titre'] ?? '');
         $resume = trim($_POST['resume'] ?? '');
         $notice = trim($_POST['notice'] ?? '');
+        $image_url = trim($_POST['image_url'] ?? '');
         $debut_at = $_POST['debut_at'] ?? null;
         $fin_at = $_POST['fin_at'] ?? null;
         $nb_participants = intval($_POST['nb_participants_attendus'] ?? 0);
@@ -63,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'titre' => $titre,
                     'resume' => $resume ?: null,
                     'notice' => $notice ?: null,
+                    'image_url' => $image_url ?: null,
                     'debut_at' => $debut_at ?: null,
                     'fin_at' => $fin_at ?: null,
                     'nb_participants_attendus' => $nb_participants,
@@ -84,6 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'echelle_id' => ($q['type'] == 0) ? 1 : null,
                         'titre' => trim($q['titre']),
                         'question' => trim($q['description'] ?? '') ?: null,
+                        'image_url' => trim($q['image_url'] ?? '') ?: null,
                         'lot' => intval($q['lot'] ?? 0),
                         'ordre' => $ordre,
                         'est_obligatoire' => isset($q['obligatoire']) ? 1 : 0
@@ -130,6 +133,7 @@ foreach ($questions as $q) {
         'type' => $q['type_question'],
         'titre' => $q['titre'],
         'description' => $q['question'] ?? '',
+        'image_url' => $q['image_url'] ?? '',
         'lot' => $q['lot'],
         'obligatoire' => $q['est_obligatoire'],
         'reponses' => $reponses
@@ -155,34 +159,26 @@ $csrfToken = generateCsrfToken();
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: #f5f5f5;
             min-height: 100vh;
+        }
+
+        .page-content {
             padding: 20px;
         }
+
+        <?php echo getNavigationCSS(); ?>
 
         .container {
             max-width: 900px;
             margin: 0 auto;
         }
 
-        .header {
-            background: white;
-            padding: 20px 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .page-header {
             margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
-        .header h1 {
+        .page-header h1 {
             color: #333;
             font-size: 24px;
-        }
-
-        .header-links a {
-            color: #667eea;
-            text-decoration: none;
-            margin-left: 20px;
         }
 
         .card {
@@ -450,16 +446,79 @@ $csrfToken = generateCsrfToken();
         .type-2 { background: #6c757d; color: white; }
         .type-3 { background: #fd7e14; color: white; }
         .type-4 { background: #20c997; color: white; }
+
+        /* Styles upload images */
+        .image-upload-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .image-preview {
+            position: relative;
+            width: 120px;
+            height: 80px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .btn-remove-image {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(220,53,69,0.9);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+        }
+        .btn-upload {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 16px;
+            background: #f8f9fa;
+            border: 2px dashed #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+            transition: all 0.2s;
+        }
+        .btn-upload:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        .upload-progress {
+            width: 120px;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .upload-progress .progress-bar {
+            height: 100%;
+            background: #667eea;
+            width: 0;
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body>
+    <?php echo renderNavigation(''); ?>
+
+    <div class="page-content">
     <div class="container">
-        <div class="header">
+        <div class="page-header">
             <h1>Modifier le scrutin</h1>
-            <div class="header-links">
-                <a href="/<?php echo urlencode($code); ?>/v/">Voir</a>
-                <a href="/mes-scrutins.php">Mes scrutins</a>
-            </div>
         </div>
 
         <?php if (!empty($errors)): ?>
@@ -503,6 +562,26 @@ $csrfToken = generateCsrfToken();
                 <div class="form-group">
                     <label for="notice">Instructions pour les votants</label>
                     <textarea id="notice" name="notice" rows="3"><?php echo htmlspecialchars($scrutin['notice'] ?? ''); ?></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Image du scrutin</label>
+                    <div class="image-upload-container" id="scrutin-image-container">
+                        <input type="hidden" id="image_url" name="image_url" value="<?php echo htmlspecialchars($scrutin['image_url'] ?? ''); ?>">
+                        <div class="image-preview" id="scrutin-image-preview" style="<?php echo empty($scrutin['image_url']) ? 'display:none' : ''; ?>">
+                            <?php if (!empty($scrutin['image_url'])): ?>
+                            <img src="<?php echo htmlspecialchars($scrutin['image_url']); ?>" alt="Aperçu">
+                            <?php endif; ?>
+                            <button type="button" class="btn-remove-image" onclick="removeImage('scrutin')">×</button>
+                        </div>
+                        <label class="btn-upload" id="scrutin-upload-label">
+                            <input type="file" accept="image/*" onchange="uploadImage(this, 'scrutin')" style="display:none">
+                            <span>Choisir une image</span>
+                        </label>
+                        <div class="upload-progress" id="scrutin-progress" style="display:none">
+                            <div class="progress-bar"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -638,6 +717,24 @@ $csrfToken = generateCsrfToken();
                     <textarea name="questions[${index}][description]" rows="2">${escapeHtml(data.description || '')}</textarea>
                 </div>
 
+                <div class="form-group">
+                    <label>Image de la question</label>
+                    <div class="image-upload-container">
+                        <input type="hidden" name="questions[${index}][image_url]" class="question-image-url" value="${escapeHtml(data.image_url || '')}">
+                        <div class="image-preview question-image-preview" style="${data.image_url ? '' : 'display:none'}">
+                            ${data.image_url ? '<img src="' + escapeHtml(data.image_url) + '" alt="Apercu">' : ''}
+                            <button type="button" class="btn-remove-image" onclick="removeQuestionImage(this)">×</button>
+                        </div>
+                        <label class="btn-upload">
+                            <input type="file" accept="image/*" onchange="uploadQuestionImage(this)" style="display:none">
+                            <span>Choisir une image</span>
+                        </label>
+                        <div class="upload-progress question-upload-progress" style="display:none">
+                            <div class="progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="reponses-field ${showReponses ? 'visible' : ''}">
                     <label>Réponses possibles</label>
                     <textarea name="questions[${index}][reponses]">${escapeHtml(data.reponses || '')}</textarea>
@@ -732,6 +829,158 @@ $csrfToken = generateCsrfToken();
             container.appendChild(createQuestionCard({ type: 0, obligatoire: true }));
         }
     })();
+
+    // Fonctions d'upload d'images
+    const csrfToken = '<?php echo $csrfToken; ?>';
+
+    function uploadImage(input, prefix) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const preview = document.getElementById(prefix + '-image-preview');
+        const progress = document.getElementById(prefix + '-progress');
+        const hiddenInput = document.getElementById('image_url');
+        const uploadLabel = document.getElementById(prefix + '-upload-label');
+
+        if (!file.type.match(/^image\/(jpeg|png|gif|webp)$/)) {
+            alert('Format non supporté. Utilisez JPG, PNG, GIF ou WebP.');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Fichier trop volumineux (max 5 Mo)');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('csrf_token', csrfToken);
+
+        progress.style.display = 'block';
+        uploadLabel.style.display = 'none';
+        const progressBar = progress.querySelector('.progress-bar');
+        progressBar.style.width = '0%';
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload.php', true);
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = (e.loaded / e.total) * 100;
+                progressBar.style.width = percent + '%';
+            }
+        };
+
+        xhr.onload = function() {
+            progress.style.display = 'none';
+            uploadLabel.style.display = 'inline-flex';
+
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    hiddenInput.value = response.url;
+                    preview.innerHTML = '<img src="' + response.url + '" alt="Aperçu"><button type="button" class="btn-remove-image" onclick="removeImage(\'' + prefix + '\')">×</button>';
+                    preview.style.display = 'block';
+                } else {
+                    alert(response.error || 'Erreur upload');
+                }
+            } else {
+                alert('Erreur serveur');
+            }
+        };
+
+        xhr.onerror = function() {
+            progress.style.display = 'none';
+            uploadLabel.style.display = 'inline-flex';
+            alert('Erreur réseau');
+        };
+
+        xhr.send(formData);
+    }
+
+    function removeImage(prefix) {
+        const preview = document.getElementById(prefix + '-image-preview');
+        const hiddenInput = document.getElementById('image_url');
+        preview.style.display = 'none';
+        preview.innerHTML = '';
+        hiddenInput.value = '';
+    }
+
+    function uploadQuestionImage(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const container = input.closest('.image-upload-container');
+        const preview = container.querySelector('.question-image-preview');
+        const progress = container.querySelector('.question-upload-progress');
+        const hiddenInput = container.querySelector('.question-image-url');
+        const uploadLabel = container.querySelector('.btn-upload');
+
+        if (!file.type.match(/^image\/(jpeg|png|gif|webp)$/)) {
+            alert('Format non supporté. Utilisez JPG, PNG, GIF ou WebP.');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Fichier trop volumineux (max 5 Mo)');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('csrf_token', csrfToken);
+
+        progress.style.display = 'block';
+        uploadLabel.style.display = 'none';
+        const progressBar = progress.querySelector('.progress-bar');
+        progressBar.style.width = '0%';
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload.php', true);
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = (e.loaded / e.total) * 100;
+                progressBar.style.width = percent + '%';
+            }
+        };
+
+        xhr.onload = function() {
+            progress.style.display = 'none';
+            uploadLabel.style.display = 'inline-flex';
+
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    hiddenInput.value = response.url;
+                    preview.innerHTML = '<img src="' + response.url + '" alt="Aperçu"><button type="button" class="btn-remove-image" onclick="removeQuestionImage(this)">×</button>';
+                    preview.style.display = 'block';
+                } else {
+                    alert(response.error || 'Erreur upload');
+                }
+            } else {
+                alert('Erreur serveur');
+            }
+        };
+
+        xhr.onerror = function() {
+            progress.style.display = 'none';
+            uploadLabel.style.display = 'inline-flex';
+            alert('Erreur réseau');
+        };
+
+        xhr.send(formData);
+    }
+
+    function removeQuestionImage(btn) {
+        const container = btn.closest('.image-upload-container');
+        const preview = container.querySelector('.question-image-preview');
+        const hiddenInput = container.querySelector('.question-image-url');
+        preview.style.display = 'none';
+        preview.innerHTML = '';
+        hiddenInput.value = '';
+    }
     </script>
+    </div>
 </body>
 </html>
