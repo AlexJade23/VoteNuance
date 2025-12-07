@@ -687,7 +687,13 @@ $typeLabels = [
         <?php if ($status['canVote']): ?>
         <div class="card vote-section">
             <p>Ce scrutin est ouvert aux votes.</p>
-            <a href="/<?php echo urlencode($scrutin['code']); ?>/" class="btn btn-success" style="font-size: 16px; padding: 15px 40px;">
+            <?php
+            $voteUrl = '/' . urlencode($scrutin['code']) . '/';
+            if (!empty($_GET['jeton'])) {
+                $voteUrl .= '?jeton=' . urlencode($_GET['jeton']);
+            }
+            ?>
+            <a href="<?php echo htmlspecialchars($voteUrl); ?>" class="btn btn-success" style="font-size: 16px; padding: 15px 40px;">
                 Participer au vote
             </a>
         </div>

@@ -692,7 +692,7 @@ $typeLabels = [
             </div>
             <?php endif; ?>
 
-            <form method="GET" action="/<?php echo urlencode($scrutin['code']); ?>/v/">
+            <form method="GET" action="/<?php echo urlencode($scrutin['code']); ?>/">
                 <div class="token-input-group">
                     <label for="jeton">Entrez votre jeton :</label>
                     <input type="text"
