@@ -148,23 +148,23 @@
 ## Epic 3 : Types de questions avances
 
 ### US-006 : Question "Prefere du lot"
-**Statut** : A faire | **Priorite** : Moyenne | **Estimation** : M
+**Statut** : Done | **Priorite** : Moyenne | **Estimation** : M
 
 **En tant que** votant
 **Je veux** pouvoir designer mon prefere parmi un groupe d'options
 **Afin de** exprimer ma preference relative dans un lot
 
 #### Criteres d'acceptation
-- [ ] Type de question "prefere_lot" dans le formulaire creation
-- [ ] Interface vote : selection unique parmi les options du lot
-- [ ] Resultats : classement par nombre de votes
-- [ ] Graphique camembert ou barres pour ce type
+- [x] Type de question "prefere_lot" dans le formulaire creation (deja existant type=3)
+- [x] Interface vote : selection unique parmi les options du lot
+- [x] Resultats : classement par nombre de votes
+- [x] Affichage barres avec gagnant en vert
 
 #### Taches techniques
-- [ ] Ajouter type "prefere_lot" dans scrutin-create.php
-- [ ] Modifier vote.php pour gerer ce type (radio buttons)
-- [ ] Modifier scrutin-results.php pour afficher resultats
-- [ ] Ajouter graphique dedie
+- [x] Type "prefere_lot" deja present dans scrutin-create.php
+- [x] Modifier vote.php pour gerer ce type (radio buttons)
+- [x] Modifier scrutin-results.php pour afficher resultats
+- [x] Export CSV inclut les resultats "prefere du lot"
 
 #### Fichiers concernes
 - scrutin-create.php

@@ -130,6 +130,23 @@ function getResultsForQuestion($scrutinId, $questionId, $typeQuestion) {
             'results' => $results,
             'total' => $total
         ];
+    } elseif ($typeQuestion == 3) {
+        // Prefere du lot - comptage par reponse, trie par votes decroissants
+        $stmt = $pdo->prepare('
+            SELECT reponse, COUNT(*) as count
+            FROM bulletins
+            WHERE scrutin_id = ? AND question_id = ? AND est_test = 0 AND reponse IS NOT NULL
+            GROUP BY reponse
+            ORDER BY count DESC
+        ');
+        $stmt->execute([$scrutinId, $questionId]);
+        $results = $stmt->fetchAll();
+        $total = array_sum(array_column($results, 'count'));
+        return [
+            'type' => 'prefere',
+            'results' => $results,
+            'total' => $total
+        ];
     }
 
     return null;
@@ -359,6 +376,43 @@ $datasetsOrdre = buildChartDatasets($nuanceResultsOrdre, $classementMini, $menti
         .no-responses { color: #666; font-style: italic; text-align: center; padding: 20px; }
         .back-link { display: inline-block; margin-bottom: 20px; color: #667eea; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
+
+        /* Prefere du lot results */
+        .prefere-result {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .prefere-winner {
+            background: #e8f5e9;
+            border: 2px solid #28a745;
+        }
+        .prefere-rank {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .prefere-winner .prefere-rank {
+            background: #28a745;
+        }
+        .prefere-content {
+            flex: 1;
+        }
+        .winner-bar {
+            background: #28a745 !important;
+        }
         .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
         .btn-primary { background: #667eea; color: white; }
         .btn-secondary { background: #6c757d; color: white; }
@@ -469,6 +523,26 @@ $datasetsOrdre = buildChartDatasets($nuanceResultsOrdre, $classementMini, $menti
             </div>
             <?php endforeach; ?>
 
+            <?php elseif ($results['type'] === 'prefere'): ?>
+            <!-- Prefere du lot : affichage avec classement -->
+            <?php foreach ($results['results'] as $idx => $r):
+                $percent = $results['total'] > 0 ? ($r['count'] / $results['total']) * 100 : 0;
+                $isFirst = ($idx === 0);
+            ?>
+            <div class="prefere-result <?php echo $isFirst ? 'prefere-winner' : ''; ?>">
+                <div class="prefere-rank"><?php echo $idx + 1; ?></div>
+                <div class="prefere-content">
+                    <div class="qcm-label">
+                        <span><?php echo htmlspecialchars($r['reponse']); ?></span>
+                        <span><?php echo $r['count']; ?> vote<?php echo $r['count'] > 1 ? 's' : ''; ?> (<?php echo round($percent, 1); ?>%)</span>
+                    </div>
+                    <div class="qcm-bar-container">
+                        <div class="qcm-bar-fill <?php echo $isFirst ? 'winner-bar' : ''; ?>" style="width: <?php echo $percent; ?>%;"></div>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+
             <?php elseif ($results['type'] === 'open'): ?>
             <?php if (empty($results['responses'])): ?>
             <div class="no-responses">Aucune reponse</div>
@@ -562,6 +636,14 @@ $datasetsOrdre = buildChartDatasets($nuanceResultsOrdre, $classementMini, $menti
                     r.results.forEach(function(item) {
                         var pct = r.total > 0 ? ((item.count / r.total) * 100).toFixed(1) : 0;
                         csv += '"' + (item.reponse || '').replace(/"/g, '""') + '",' + item.count + ',' + pct + '%\n';
+                    });
+                    csv += '\n';
+                } else if (r.type === 'prefere') {
+                    csv += '=== Prefere du lot: ' + r.titre + ' ===\n';
+                    csv += 'Rang,Option,Votes,Pourcentage\n';
+                    r.results.forEach(function(item, idx) {
+                        var pct = r.total > 0 ? ((item.count / r.total) * 100).toFixed(1) : 0;
+                        csv += (idx + 1) + ',"' + (item.reponse || '').replace(/"/g, '""') + '",' + item.count + ',' + pct + '%\n';
                     });
                     csv += '\n';
                 } else if (r.type === 'open') {

@@ -545,6 +545,54 @@ $typeLabels = [
             max-height: 150px;
         }
 
+        /* Prefere du lot */
+        .prefere-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .prefere-option {
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .prefere-option:hover {
+            background: #e9ecef;
+        }
+
+        .prefere-label {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            cursor: pointer;
+            gap: 15px;
+        }
+
+        .prefere-label input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #667eea;
+            cursor: pointer;
+        }
+
+        .prefere-text {
+            font-size: 15px;
+            color: #333;
+        }
+
+        .prefere-option:has(input:checked) {
+            background: #667eea;
+            color: white;
+        }
+
+        .prefere-option:has(input:checked) .prefere-text {
+            color: white;
+            font-weight: 600;
+        }
+
         /* Lightbox */
         .lightbox-overlay {
             display: none;
@@ -865,7 +913,8 @@ $typeLabels = [
             </div>
 
             <?php elseif ($question['type_question'] == 3): ?>
-            <!-- Préféré du lot (simplifié comme QCM pour l'instant) -->
+            <!-- Préféré du lot : selection unique parmi les options -->
+            <?php $reponsesPossibles = getReponsesPossibles($question['id']); ?>
             <div class="question-card">
                 <?php if (!empty($question['image_url'])): ?>
                 <img src="<?php echo htmlspecialchars($question['image_url']); ?>" alt="" class="clickable-image question-image" onclick="openLightbox(this.src)">
@@ -882,9 +931,18 @@ $typeLabels = [
                         <?php endif; ?>
                     </div>
                 </div>
-                <div class="open-response">
-                    <textarea name="reponse[<?php echo $question['id']; ?>]"
-                              placeholder="Votre choix préféré..."><?php echo htmlspecialchars($_POST['reponse'][$question['id']] ?? ''); ?></textarea>
+                <div class="prefere-options">
+                    <?php foreach ($reponsesPossibles as $rep): ?>
+                    <div class="prefere-option">
+                        <label class="prefere-label">
+                            <input type="radio"
+                                   name="reponse[<?php echo $question['id']; ?>]"
+                                   value="<?php echo htmlspecialchars($rep['libelle']); ?>"
+                                   <?php echo (($_POST['reponse'][$question['id']] ?? '') === $rep['libelle']) ? 'checked' : ''; ?>>
+                            <span class="prefere-text"><?php echo htmlspecialchars($rep['libelle']); ?></span>
+                        </label>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
             <?php endif; ?>
