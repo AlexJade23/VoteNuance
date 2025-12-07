@@ -75,7 +75,10 @@ $errors = [];
 $success = false;
 
 // Traitement du vote
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canVote) {
+// Verifier : scrutin ouvert ET (scrutin public OU jeton valide)
+$canSubmitVote = $canVote && (!$requiresToken || $tokenInfo);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canSubmitVote) {
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $errors[] = 'Token de sécurité invalide';
     } else {
@@ -666,11 +669,22 @@ $typeLabels = [
         </div>
         <?php endif; ?>
 
+        <?php
+        // Pour un scrutin privé, il faut un jeton valide (même si connecté)
+        $canAccessVote = !$requiresToken || $tokenInfo;
+        ?>
+
         <?php if ($requiresToken && !$tokenInfo): ?>
         <!-- Formulaire de saisie de jeton pour scrutin privé -->
         <div class="card token-form-card">
-            <h2>Scrutin privé</h2>
-            <p>Ce scrutin nécessite un jeton d'invitation pour voter.</p>
+            <h2>Scrutin prive</h2>
+            <p>Ce scrutin necessite un jeton d'invitation pour voter.</p>
+            <?php if ($user): ?>
+            <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+                Vous etes connecte en tant que <strong><?php echo htmlspecialchars($user['display_name'] ?? 'utilisateur'); ?></strong>,
+                mais un jeton est tout de meme requis pour ce scrutin.
+            </p>
+            <?php endif; ?>
 
             <?php if ($tokenError): ?>
             <div class="error-box">
@@ -690,11 +704,11 @@ $typeLabels = [
                            autofocus
                            value="<?php echo htmlspecialchars($_GET['jeton'] ?? ''); ?>">
                 </div>
-                <button type="submit" class="btn btn-primary">Accéder au vote</button>
+                <button type="submit" class="btn btn-primary">Acceder au vote</button>
             </form>
 
             <p class="token-help">
-                Le jeton vous a été communiqué par l'organisateur du scrutin.
+                Le jeton vous a ete communique par l'organisateur du scrutin.
             </p>
         </div>
 
