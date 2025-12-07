@@ -117,31 +117,29 @@
 ---
 
 ### US-005 : Export PDF des resultats
-**Statut** : A faire | **Priorite** : Moyenne | **Estimation** : L
+**Statut** : Done | **Priorite** : Moyenne | **Estimation** : L
 
 **En tant que** organisateur de scrutin
 **Je veux** exporter les resultats en PDF
 **Afin de** les partager ou les imprimer proprement
 
 #### Criteres d'acceptation
-- [ ] Bouton "Exporter PDF" sur la page resultats
-- [ ] PDF contient : titre scrutin, date, graphiques, tableau resultats
-- [ ] Mise en page propre format A4
-- [ ] Nom fichier : resultats_CODE_DATE.pdf
+- [x] Bouton "Exporter PDF" sur la page resultats
+- [x] PDF contient : titre scrutin, date, tableau resultats
+- [x] Mise en page propre format A4
+- [x] Nom fichier : via impression navigateur
 
-#### Taches techniques
-- [ ] Evaluer librairie PDF (TCPDF, FPDF, ou Dompdf)
-- [ ] Creer template PDF
-- [ ] Integrer graphiques (capture ou regeneration)
-- [ ] Endpoint export-pdf.php
-
-#### Dependances
-- Necessite une librairie PHP (a valider)
+#### Implementation
+Solution retenue : page HTML optimisee pour impression (CSS @media print)
+plutot qu'une librairie PDF externe. Avantages :
+- Pas de dependance externe
+- Maintenance simplifiee
+- Qualite native du navigateur
 
 #### Fichiers concernes
-- scrutin-results.php
-- export-pdf.php (nouveau)
-- lib/ (librairie PDF)
+- scrutin-results.php (bouton Export PDF)
+- export-pdf.php (nouveau - page optimisee impression)
+- .htaccess (route /CODE/pdf/)
 
 ---
 
@@ -174,7 +172,54 @@
 
 ---
 
-## Epic 4 : Notifications
+## Epic 4 : Monetisation
+
+### US-013 : Paiement Stripe pour les jetons
+**Statut** : A faire | **Priorite** : Haute | **Estimation** : L
+
+**En tant que** organisateur de scrutin prive
+**Je veux** acheter des jetons de vote via Stripe
+**Afin de** financer le service et obtenir mes jetons instantanement
+
+#### Criteres d'acceptation
+- [ ] Panier affichant le nombre de jetons et le prix (1EUR/jeton)
+- [ ] Integration Stripe Checkout pour le paiement
+- [ ] Confirmation de paiement avant generation des jetons
+- [ ] Historique des achats par utilisateur
+- [ ] Gestion des erreurs de paiement
+
+#### Taches techniques
+- [ ] Creer compte Stripe et obtenir cles API (test puis production)
+- [ ] Configurer webhook Stripe pour confirmation paiement
+- [ ] Ajouter table `achats` en base (user_id, scrutin_id, nb_jetons, montant, stripe_session_id, status, created_at)
+- [ ] Modifier scrutin-view.php : panier avant generation
+- [ ] Creer stripe-checkout.php : creation session Stripe
+- [ ] Creer stripe-webhook.php : reception confirmation paiement
+- [ ] Creer stripe-success.php : page de succes post-paiement
+- [ ] Generer les jetons uniquement apres confirmation webhook
+
+#### Dependances
+- Cles API Stripe (pk_test_*, sk_test_* puis pk_live_*, sk_live_*)
+- Cle webhook Stripe (whsec_*)
+- Compte Stripe verifie pour les paiements en production
+
+#### Questions ouvertes
+- Seuil gratuit avant facturation ? (ex: 10 jetons gratuits)
+- TVA a appliquer ? (1EUR TTC ou HT + 20%)
+- Facture PDF a generer ?
+
+#### Fichiers concernes
+- scrutin-view.php (panier)
+- stripe-checkout.php (nouveau)
+- stripe-webhook.php (nouveau)
+- stripe-success.php (nouveau)
+- functions.php (fonctions paiement)
+- database.migrations.sql (table achats)
+- config.php (cles Stripe)
+
+---
+
+## Epic 5 : Notifications
 
 ### US-007 : Email de confirmation de vote
 **Statut** : A faire | **Priorite** : Basse | **Estimation** : M
@@ -232,7 +277,7 @@
 
 ---
 
-## Epic 5 : Ameliorations UX
+## Epic 6 : Ameliorations UX
 
 ### US-009 : Drag & drop upload images
 **Statut** : A faire | **Priorite** : Basse | **Estimation** : S
@@ -310,7 +355,7 @@
 
 ---
 
-## Epic 6 : Maintenance
+## Epic 7 : Maintenance
 
 ### US-012 : Nettoyage images orphelines
 **Statut** : A faire | **Priorite** : Basse | **Estimation** : S
@@ -351,15 +396,18 @@
 5. US-006 : Question "Prefere du lot"
 6. US-005 : Export PDF des resultats
 
-### Sprint 4 - Notifications (Priorite Basse)
-7. US-007 : Email de confirmation de vote
-8. US-008 : Email notification nouveaux resultats
+### Sprint 4 - Monetisation (Priorite Haute)
+7. US-013 : Paiement Stripe pour les jetons
 
-### Sprint 5 - Polish UX (Priorite Basse)
-9. US-009 : Drag & drop upload images
-10. US-010 : Compression automatique des images
-11. US-011 : Mode sombre
-12. US-012 : Nettoyage images orphelines
+### Sprint 5 - Notifications (Priorite Basse)
+8. US-007 : Email de confirmation de vote
+9. US-008 : Email notification nouveaux resultats
+
+### Sprint 6 - Polish UX (Priorite Basse)
+10. US-009 : Drag & drop upload images
+11. US-010 : Compression automatique des images
+12. US-011 : Mode sombre
+13. US-012 : Nettoyage images orphelines
 
 ---
 

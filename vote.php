@@ -169,6 +169,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canSubmitVote) {
                 $_SESSION['last_ballot_secret'] = $ballotSecret;
                 $_SESSION['last_ballot_scrutin'] = $scrutin['code'];
 
+                // Stocker le récapitulatif des votes pour l'affichage
+                $votesSummary = [];
+                foreach ($questions as $q) {
+                    if ($q['type_question'] == 2) continue; // Séparateur
+
+                    $voteValue = null;
+                    if ($q['type_question'] == 0) {
+                        // Vote nuancé - trouver le libellé de la mention
+                        $mentionRang = intval($votes[$q['id']] ?? 0);
+                        foreach ($mentions as $m) {
+                            if ($m['rang'] == $mentionRang) {
+                                $voteValue = $m['libelle'];
+                                break;
+                            }
+                        }
+                    } elseif ($q['type_question'] == 1) {
+                        // Réponse ouverte
+                        $voteValue = trim($reponses[$q['id']] ?? '') ?: '(vide)';
+                    } elseif ($q['type_question'] == 3 || $q['type_question'] == 4) {
+                        // QCM ou Préféré du lot
+                        $voteValue = $reponses[$q['id']] ?? '(non répondu)';
+                    }
+
+                    if ($voteValue) {
+                        $votesSummary[] = [
+                            'question' => $q['titre'],
+                            'reponse' => $voteValue
+                        ];
+                    }
+                }
+                $_SESSION['last_votes_summary'] = $votesSummary;
+                $_SESSION['last_scrutin_titre'] = $scrutin['titre'];
+
             } catch (Exception $e) {
                 $pdo->rollBack();
                 $errors[] = 'Erreur lors de l\'enregistrement du vote : ' . $e->getMessage();
@@ -697,6 +730,172 @@ $typeLabels = [
             color: #888;
             margin-top: 20px;
         }
+
+        /* Récépissé de vote */
+        .vote-receipt {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .receipt-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .receipt-header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .receipt-scrutin {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .receipt-date {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .receipt-body {
+            padding: 25px;
+        }
+
+        .receipt-section h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .receipt-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+
+        .receipt-table tr {
+            border-bottom: 1px solid #eee;
+        }
+
+        .receipt-table td {
+            padding: 10px 5px;
+            vertical-align: top;
+        }
+
+        .receipt-question {
+            font-weight: 500;
+            color: #333;
+            width: 60%;
+        }
+
+        .receipt-answer {
+            color: #667eea;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .receipt-verification {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .receipt-qr {
+            flex-shrink: 0;
+        }
+
+        .receipt-qr img {
+            width: 120px;
+            height: 120px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .receipt-key {
+            flex: 1;
+        }
+
+        .receipt-key h3 {
+            border: none;
+            padding-bottom: 0;
+            margin-bottom: 8px;
+        }
+
+        .key-description {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .key-value {
+            font-family: monospace;
+            font-size: 11px;
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            word-break: break-all;
+            border: 1px solid #ddd;
+            color: #333;
+        }
+
+        .receipt-footer {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            border-top: 1px solid #eee;
+        }
+
+        /* Styles d'impression */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .container {
+                max-width: 100%;
+            }
+
+            .header, .notice {
+                display: none;
+            }
+
+            .vote-receipt {
+                border: 1px solid #333;
+                box-shadow: none;
+                max-width: 100%;
+            }
+
+            .receipt-header {
+                background: #667eea !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            @page {
+                size: A4;
+                margin: 15mm;
+            }
+        }
     </style>
 </head>
 <body>
@@ -772,28 +971,61 @@ $typeLabels = [
         </div>
 
         <?php elseif ($success): ?>
-        <div class="success-box">
-            <h2>Merci pour votre vote !</h2>
-            <p>Votre participation a été enregistrée avec succès.</p>
-
-            <?php if (isset($_SESSION['last_ballot_secret'])): ?>
-            <div class="ballot-secret">
-                <span class="ballot-secret-label">Votre clé de vérification (conservez-la) :</span>
-                <?php echo htmlspecialchars($_SESSION['last_ballot_secret']); ?>
-            </div>
-            <p style="font-size: 13px; color: #666;">
-                Cette clé vous permet de vérifier que votre vote a bien été comptabilisé.<br>
-                Elle ne permet pas de vous identifier.
-            </p>
-            <?php endif; ?>
-
+        <!-- Boutons d'action (masqués à l'impression) -->
+        <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+            <button onclick="window.print()" class="btn btn-primary" style="margin-right: 10px;">
+                Imprimer / Sauvegarder PDF
+            </button>
             <?php if ($scrutin['affiche_resultats']): ?>
-            <div class="results-link">
-                <a href="/<?php echo urlencode($scrutin['code']); ?>/r/" class="btn btn-primary" style="margin-top: 20px;">
-                    Voir les résultats
-                </a>
-            </div>
+            <a href="/<?php echo urlencode($scrutin['code']); ?>/r/" class="btn btn-success">
+                Voir les résultats
+            </a>
             <?php endif; ?>
+        </div>
+
+        <!-- Récépissé de vote imprimable -->
+        <div class="vote-receipt">
+            <div class="receipt-header">
+                <h1>Recepisse de vote</h1>
+                <p class="receipt-scrutin"><?php echo htmlspecialchars($_SESSION['last_scrutin_titre'] ?? $scrutin['titre']); ?></p>
+                <p class="receipt-date">Vote enregistre le <?php echo date('d/m/Y à H:i'); ?></p>
+            </div>
+
+            <div class="receipt-body">
+                <div class="receipt-section">
+                    <h3>Recapitulatif de vos choix</h3>
+                    <table class="receipt-table">
+                        <?php if (isset($_SESSION['last_votes_summary'])): ?>
+                        <?php foreach ($_SESSION['last_votes_summary'] as $vote): ?>
+                        <tr>
+                            <td class="receipt-question"><?php echo htmlspecialchars($vote['question']); ?></td>
+                            <td class="receipt-answer"><?php echo htmlspecialchars($vote['reponse']); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                    </table>
+                </div>
+
+                <div class="receipt-verification">
+                    <div class="receipt-qr">
+                        <?php if (isset($_SESSION['last_ballot_secret'])): ?>
+                        <?php $verifyUrl = 'https://app.decision-collective.fr/verify/' . $_SESSION['last_ballot_secret']; ?>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=<?php echo urlencode($verifyUrl); ?>" alt="QR Code de verification">
+                        <?php endif; ?>
+                    </div>
+                    <div class="receipt-key">
+                        <h3>Cle de verification</h3>
+                        <p class="key-description">Conservez ce recepisse. La cle ci-dessous vous permet de verifier que votre vote a bien ete comptabilise, sans reveler votre identite.</p>
+                        <?php if (isset($_SESSION['last_ballot_secret'])): ?>
+                        <div class="key-value"><?php echo htmlspecialchars($_SESSION['last_ballot_secret']); ?></div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="receipt-footer">
+                <p>Vote Nuance - <?php echo htmlspecialchars($scrutin['code']); ?> - Ce document fait foi de votre participation</p>
+            </div>
         </div>
 
         <?php else: ?>

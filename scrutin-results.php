@@ -563,6 +563,7 @@ $datasetsOrdre = buildChartDatasets($nuanceResultsOrdre, $classementMini, $menti
         <?php if ($isOwner): ?>
         <div class="card" style="text-align: center; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
             <button onclick="exportResultsCsv()" class="btn btn-secondary">Exporter CSV</button>
+            <a href="/<?php echo urlencode($code); ?>/pdf/" class="btn btn-secondary" target="_blank">Exporter PDF</a>
             <a href="/<?php echo urlencode($code); ?>/s/" class="btn btn-primary">Modifier le scrutin</a>
         </div>
         <?php endif; ?>
@@ -607,12 +608,13 @@ $datasetsOrdre = buildChartDatasets($nuanceResultsOrdre, $classementMini, $menti
         // Resultats Vote Nuance
         if (d.nuanceResults && d.nuanceResults.length > 0) {
             csv += '=== RESULTATS VOTE NUANCE ===\n';
-            csv += 'Rang,Question,AC,FC,PC,SA,PP,FP,AP,Total,Classement,Taux Partisans Net\n';
+            csv += 'Rang,Question,Classement,AC,FC,PC,SA,PP,FP,AP,Total,Taux Partisans Net\n';
 
             d.nuanceResults.forEach(function(r, idx) {
                 var counts = r.counts || {};
                 csv += (idx + 1) + ',';
                 csv += '"' + (r.titre || '').replace(/"/g, '""') + '",';
+                csv += r.classement.toFixed(1) + ',';
                 csv += (counts[1] || 0) + ',';
                 csv += (counts[2] || 0) + ',';
                 csv += (counts[3] || 0) + ',';
@@ -621,7 +623,6 @@ $datasetsOrdre = buildChartDatasets($nuanceResultsOrdre, $classementMini, $menti
                 csv += (counts[6] || 0) + ',';
                 csv += (counts[7] || 0) + ',';
                 csv += r.total + ',';
-                csv += r.classement.toFixed(1) + ',';
                 csv += r.tauxPartisansNet + '%\n';
             });
             csv += '\n';

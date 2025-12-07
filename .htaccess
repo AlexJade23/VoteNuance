@@ -7,11 +7,18 @@ RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
+# /verify -> verify.php (verification de vote)
+RewriteRule ^verify/?$ verify.php [L,QSA]
+RewriteRule ^verify/([a-fA-F0-9]{64})/?$ verify.php?key=$1 [L,QSA]
+
 # /CODE/s/ → scrutin-edit.php?code=CODE (settings/modifier)
 RewriteRule ^([a-zA-Z0-9\-]+)/s/?$ scrutin-edit.php?code=$1 [L,QSA]
 
 # /CODE/r/ → scrutin-results.php?code=CODE (resultats)
 RewriteRule ^([a-zA-Z0-9\-]+)/r/?$ scrutin-results.php?code=$1 [L,QSA]
+
+# /CODE/pdf/ → export-pdf.php?code=CODE (export PDF)
+RewriteRule ^([a-zA-Z0-9\-]+)/pdf/?$ export-pdf.php?code=$1 [L,QSA]
 
 # /CODE/v/ → scrutin-view.php?code=CODE (voir sans voter)
 RewriteRule ^([a-zA-Z0-9\-]+)/v/?$ scrutin-view.php?code=$1 [L,QSA]

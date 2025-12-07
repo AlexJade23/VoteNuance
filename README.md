@@ -107,13 +107,16 @@ VoteNuance/
 │
 ├── scrutin-create.php      # Creation d'un scrutin
 ├── scrutin-edit.php        # Modification d'un scrutin
-├── scrutin-view.php        # Vue detail d'un scrutin
+├── scrutin-view.php        # Vue detail d'un scrutin (+ gestion jetons)
 ├── scrutin-results.php     # Resultats avec graphiques
 │
-├── vote.php                # Interface de vote
+├── vote.php                # Interface de vote + recepisse
+├── verify.php              # Verification de vote (via cle secrete)
+├── export-pdf.php          # Export PDF des resultats (impression)
 ├── upload.php              # Endpoint upload images
 ├── uploads/                # Dossier images uploadees
 │
+├── BACKLOG.md              # Backlog Agile avec User Stories
 ├── TODO.md                 # Liste des taches
 └── README.md               # Ce fichier
 ```
@@ -121,9 +124,13 @@ VoteNuance/
 ### URLs
 
 Grace au `.htaccess`, les URLs sont simplifiees :
-- `/CODE` ou `/CODE/v/` : Page de vote
+- `/CODE` : Page de vote
+- `/CODE/v/` : Vue du scrutin (sans voter)
 - `/CODE/s/` : Modification du scrutin (proprietaire)
 - `/CODE/r/` : Resultats du scrutin
+- `/CODE/pdf/` : Export PDF des resultats
+- `/verify` : Page de verification de vote
+- `/verify/[cle]` : Verification directe avec cle
 
 ## Installation
 
@@ -179,29 +186,34 @@ chmod 755 uploads
 - [x] Option "Afficher resultats avant cloture"
 - [x] Option "Scrutin public" (sans connexion requise)
 - [x] Ordre des mentions configurable (Pour->Contre ou Contre->Pour)
+- [x] Archivage des scrutins (protection contre modification si votes)
 
 ### Vote
 - [x] Interface responsive (desktop et mobile)
 - [x] Sans Avis selectionne par defaut
 - [x] Images cliquables (lightbox plein ecran)
 - [x] Cle de verification individuelle
+- [x] Recepisse de vote imprimable avec QR code
+- [x] Page de verification accessible sans connexion (`/verify`)
 
 ### Resultats
 - [x] Algorithme Vote Nuance complet
 - [x] Normalisation automatique des Sans Avis manquants
 - [x] 2 graphiques : ordre initial et classement
-- [x] Affichage QCM et reponses ouvertes
-
-### Navigation
-- [x] Menu unifie sur toutes les pages
-- [x] Pas d'impasse de navigation
+- [x] Affichage QCM, prefere du lot et reponses ouvertes
+- [x] Export CSV des resultats
+- [x] Export PDF des resultats (format A4 paysage avec graphiques)
 
 ### Scrutins prives (jetons)
 - [x] Verification du jeton a l'acces au vote
 - [x] Generation de jetons (1 a 500 par lot)
 - [x] Suivi des jetons (statut, date utilisation)
 - [x] Revocation des jetons non utilises
-- [x] Export CSV des jetons avec liens
+- [x] Export CSV des jetons avec liens et statut
+
+### Navigation
+- [x] Menu unifie sur toutes les pages
+- [x] Pas d'impasse de navigation
 
 ## Scrutins publics vs prives
 
@@ -248,6 +260,20 @@ Sur la page du scrutin (`/CODE/s/` ou vue detail), l'organisateur voit :
 - **Tableau** : Liste complete avec statut et actions
 - **Export** : Boutons "Copier tous les liens" et "Exporter CSV"
 
+## Verification de vote
+
+Apres avoir vote, chaque participant recoit :
+- Un **recepisse imprimable** avec le recapitulatif de ses choix
+- Un **QR code** pointant vers la page de verification
+- Une **cle secrete** de 64 caracteres
+
+Pour verifier son vote :
+1. Aller sur `/verify`
+2. Saisir la cle ou scanner le QR code
+3. Le systeme affiche le recepisse complet
+
+Cette verification prouve que le vote a ete enregistre sans reveler l'identite du votant.
+
 ## Securite
 
 - HTTPS obligatoire en production
@@ -280,27 +306,45 @@ Sur la page du scrutin (`/CODE/s/` ou vue detail), l'organisateur voit :
 
 ## Etat d'avancement
 
+### Termine
 - [x] Authentification SSO (Google/Microsoft)
 - [x] Gestion des donnees personnelles
 - [x] Schema BDD complet
 - [x] Interface de creation/modification de scrutin
-- [x] Upload d'images
-- [x] Interface de vote
+- [x] Upload d'images avec lightbox
+- [x] Interface de vote responsive
 - [x] Calcul et affichage des resultats (algorithme Vote Nuance)
 - [x] Verification individuelle (ballot_secret)
 - [x] Navigation unifiee
 - [x] Gestion des jetons (scrutins prives)
-- [ ] Export des resultats (CSV/PDF)
-- [ ] Emails de notification
+- [x] Export CSV des resultats
+- [x] Export PDF des resultats (A4 paysage avec graphiques)
+- [x] Question "Prefere du lot"
+- [x] Recepisse de vote imprimable avec QR code
+- [x] Page de verification de vote (`/verify`)
+- [x] Archivage des scrutins
+
+### A venir
+- [ ] Paiement Stripe pour les jetons (priorite haute)
+- [ ] Emails de notification (priorite basse)
+- [ ] Mode sombre (priorite basse)
 
 ## Backlog
 
 Voir [BACKLOG.md](BACKLOG.md) pour le backlog Agile complet avec User Stories.
 
-### Prochaines priorites
-1. **US-004** : Export CSV des resultats
-2. **US-005** : Export PDF des resultats
-3. **US-006** : Question "Prefere du lot"
+### Prochaine priorite
+- **US-013** : Paiement Stripe pour les jetons (1EUR/jeton)
+
+## Deploiement
+
+Le script `deploy.sh` permet de deployer sur le serveur FTP :
+
+```bash
+./deploy.sh
+```
+
+Application en production : https://app.decision-collective.fr
 
 ## Licence
 
