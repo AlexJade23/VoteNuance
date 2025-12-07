@@ -48,9 +48,27 @@ if (isLoggedIn()) {
     $user = getCurrentUser();
 }
 
-if (!$scrutin['est_public'] && !$user) {
-    header('Location: login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
-    exit;
+// Gestion des jetons pour scrutins privés
+$tokenCode = $_GET['jeton'] ?? $_POST['jeton'] ?? $_SESSION['vote_token_' . $scrutin['id']] ?? '';
+$tokenInfo = null;
+$tokenError = null;
+$requiresToken = !$scrutin['est_public'];
+
+if ($requiresToken) {
+    // Vérifier si un jeton est fourni
+    if (!empty($tokenCode)) {
+        $tokenCheck = checkTokenAvailability($scrutin['id'], $tokenCode);
+        if ($tokenCheck['valid']) {
+            $tokenInfo = $tokenCheck['token'];
+            // Stocker en session pour ne pas le repasser à chaque requête
+            $_SESSION['vote_token_' . $scrutin['id']] = $tokenCode;
+        } else {
+            $tokenError = $tokenCheck['error'];
+            // Effacer le token invalide de la session
+            unset($_SESSION['vote_token_' . $scrutin['id']]);
+        }
+    }
+    // Si pas de jeton valide et pas connecté, on affichera le formulaire de saisie
 }
 
 $errors = [];
@@ -128,7 +146,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canVote) {
                 $stmt->execute([$scrutin['id'], $ipHash]);
 
                 // Marquer le jeton comme utilisé si applicable
-                if ($user) {
+                if ($tokenInfo) {
+                    markTokenAsUsed($tokenInfo['id']);
+                    // Nettoyer la session
+                    unset($_SESSION['vote_token_' . $scrutin['id']]);
+                } elseif ($user) {
+                    // Ancien comportement pour utilisateurs connectés sans jeton
                     $stmt = $pdo->prepare('
                         UPDATE jetons SET est_utilise = 1, utilise_at = NOW()
                         WHERE scrutin_id = ? AND user_id = ? AND est_utilise = 0
@@ -572,6 +595,57 @@ $typeLabels = [
         .lightbox-close:hover {
             background: #f0f0f0;
         }
+
+        /* Formulaire de jeton */
+        .token-form-card {
+            text-align: center;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .token-form-card h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .token-form-card p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .token-input-group {
+            margin-bottom: 20px;
+        }
+
+        .token-input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .token-input-group input {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+
+        .token-input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .token-help {
+            font-size: 13px;
+            color: #888;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -592,7 +666,39 @@ $typeLabels = [
         </div>
         <?php endif; ?>
 
-        <?php if (!$canVote): ?>
+        <?php if ($requiresToken && !$tokenInfo): ?>
+        <!-- Formulaire de saisie de jeton pour scrutin privé -->
+        <div class="card token-form-card">
+            <h2>Scrutin privé</h2>
+            <p>Ce scrutin nécessite un jeton d'invitation pour voter.</p>
+
+            <?php if ($tokenError): ?>
+            <div class="error-box">
+                <?php echo htmlspecialchars($tokenError); ?>
+            </div>
+            <?php endif; ?>
+
+            <form method="GET" action="/<?php echo urlencode($scrutin['code']); ?>/v/">
+                <div class="token-input-group">
+                    <label for="jeton">Entrez votre jeton :</label>
+                    <input type="text"
+                           id="jeton"
+                           name="jeton"
+                           placeholder="Ex: ABCD1234"
+                           maxlength="32"
+                           autocomplete="off"
+                           autofocus
+                           value="<?php echo htmlspecialchars($_GET['jeton'] ?? ''); ?>">
+                </div>
+                <button type="submit" class="btn btn-primary">Accéder au vote</button>
+            </form>
+
+            <p class="token-help">
+                Le jeton vous a été communiqué par l'organisateur du scrutin.
+            </p>
+        </div>
+
+        <?php elseif (!$canVote): ?>
         <div class="closed-box">
             <h2>Vote non disponible</h2>
             <p><?php echo htmlspecialchars($message); ?></p>
@@ -642,6 +748,9 @@ $typeLabels = [
 
         <form method="POST">
             <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+            <?php if ($tokenInfo): ?>
+            <input type="hidden" name="jeton" value="<?php echo htmlspecialchars($tokenCode); ?>">
+            <?php endif; ?>
 
             <?php foreach ($questions as $i => $question): ?>
 

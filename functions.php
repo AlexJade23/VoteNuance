@@ -557,3 +557,151 @@ function getNavigationCSS() {
     }
     ';
 }
+
+// ============================================================================
+// JETONS (gestion des droits de vote pour scrutins prives)
+// ============================================================================
+
+/**
+ * Verifier si un jeton est valide pour un scrutin
+ * @return array|false Retourne le jeton si valide, false sinon
+ */
+function verifyToken($scrutinId, $tokenCode) {
+    if (empty($tokenCode)) {
+        return false;
+    }
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT * FROM jetons
+        WHERE scrutin_id = ? AND code = ?
+    ');
+    $stmt->execute([$scrutinId, $tokenCode]);
+    return $stmt->fetch();
+}
+
+/**
+ * Verifier si un jeton est disponible (existe et non utilise)
+ * @return array ['valid' => bool, 'error' => string|null, 'token' => array|null]
+ */
+function checkTokenAvailability($scrutinId, $tokenCode) {
+    $token = verifyToken($scrutinId, $tokenCode);
+
+    if (!$token) {
+        return [
+            'valid' => false,
+            'error' => 'Jeton invalide ou inconnu.',
+            'token' => null
+        ];
+    }
+
+    if ($token['est_utilise']) {
+        return [
+            'valid' => false,
+            'error' => 'Ce jeton a deja ete utilise pour voter.',
+            'token' => $token
+        ];
+    }
+
+    return [
+        'valid' => true,
+        'error' => null,
+        'token' => $token
+    ];
+}
+
+/**
+ * Marquer un jeton comme utilise
+ */
+function markTokenAsUsed($tokenId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        UPDATE jetons
+        SET est_utilise = 1, utilise_at = NOW()
+        WHERE id = ? AND est_utilise = 0
+    ');
+    $stmt->execute([$tokenId]);
+    return $stmt->rowCount() > 0;
+}
+
+/**
+ * Generer des jetons pour un scrutin
+ * @return array Liste des codes de jetons generes
+ */
+function generateTokens($scrutinId, $count = 1) {
+    $pdo = getDbConnection();
+    $tokens = [];
+    $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sans I, O, 0, 1 pour eviter confusion
+
+    $stmt = $pdo->prepare('
+        INSERT INTO jetons (scrutin_id, code, est_organisateur, est_utilise)
+        VALUES (?, ?, 0, 0)
+    ');
+
+    for ($i = 0; $i < $count; $i++) {
+        // Generer un code unique de 8 caracteres
+        do {
+            $code = '';
+            for ($j = 0; $j < 8; $j++) {
+                $code .= $chars[random_int(0, strlen($chars) - 1)];
+            }
+            // Verifier unicite
+            $exists = verifyToken($scrutinId, $code);
+        } while ($exists);
+
+        $stmt->execute([$scrutinId, $code]);
+        $tokens[] = $code;
+    }
+
+    return $tokens;
+}
+
+/**
+ * Recuperer tous les jetons d'un scrutin avec leur statut
+ */
+function getTokensByScrutin($scrutinId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT id, code, est_utilise, utilise_at, created_at
+        FROM jetons
+        WHERE scrutin_id = ? AND est_organisateur = 0
+        ORDER BY created_at DESC
+    ');
+    $stmt->execute([$scrutinId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Compter les jetons d'un scrutin
+ * @return array ['total' => int, 'utilises' => int, 'disponibles' => int]
+ */
+function countTokens($scrutinId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN est_utilise = 1 THEN 1 ELSE 0 END) as utilises
+        FROM jetons
+        WHERE scrutin_id = ? AND est_organisateur = 0
+    ');
+    $stmt->execute([$scrutinId]);
+    $row = $stmt->fetch();
+
+    return [
+        'total' => (int)$row['total'],
+        'utilises' => (int)$row['utilises'],
+        'disponibles' => (int)$row['total'] - (int)$row['utilises']
+    ];
+}
+
+/**
+ * Revoquer (supprimer) un jeton non utilise
+ */
+function revokeToken($tokenId, $scrutinId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        DELETE FROM jetons
+        WHERE id = ? AND scrutin_id = ? AND est_utilise = 0 AND est_organisateur = 0
+    ');
+    $stmt->execute([$tokenId, $scrutinId]);
+    return $stmt->rowCount() > 0;
+}

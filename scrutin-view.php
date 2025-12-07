@@ -31,8 +31,44 @@ if (!$scrutin['est_public'] && !$isOwner) {
         header('Location: login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
         exit;
     }
-    // TODO: vérifier si l'utilisateur a un jeton pour ce scrutin
 }
+
+// Gestion des jetons (actions POST)
+$tokenMessage = null;
+$tokenError = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner) {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        $tokenError = 'Token de securite invalide';
+    } else {
+        $action = $_POST['token_action'] ?? '';
+
+        if ($action === 'generate') {
+            $count = intval($_POST['token_count'] ?? 1);
+            $count = max(1, min(500, $count)); // Entre 1 et 500
+            $newTokens = generateTokens($scrutin['id'], $count);
+            $tokenMessage = $count . ' jeton(s) genere(s) avec succes.';
+            $_SESSION['generated_tokens'] = $newTokens;
+        } elseif ($action === 'revoke') {
+            $tokenId = intval($_POST['token_id'] ?? 0);
+            if ($tokenId && revokeToken($tokenId, $scrutin['id'])) {
+                $tokenMessage = 'Jeton revoque avec succes.';
+            } else {
+                $tokenError = 'Impossible de revoquer ce jeton.';
+            }
+        }
+    }
+}
+
+// Recuperer les stats des jetons si scrutin prive
+$tokenStats = null;
+$tokens = [];
+if (!$scrutin['est_public'] && $isOwner) {
+    $tokenStats = countTokens($scrutin['id']);
+    $tokens = getTokensByScrutin($scrutin['id']);
+}
+
+$csrfToken = generateCsrfToken();
 
 function getScrutinStatusInfo($scrutin) {
     $now = time();
@@ -388,6 +424,160 @@ $typeLabels = [
         .back-link:hover {
             text-decoration: underline;
         }
+
+        /* Section jetons */
+        .tokens-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .tokens-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .generate-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .generate-form input[type="number"] {
+            width: 80px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .tokens-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .tokens-table th,
+        .tokens-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tokens-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .tokens-table tr:hover {
+            background: #fafafa;
+        }
+
+        .token-code {
+            font-family: monospace;
+            font-size: 14px;
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .token-status {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .token-available {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .token-used {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .btn-small {
+            padding: 5px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .generated-tokens {
+            background: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .generated-tokens h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+        }
+
+        .tokens-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .token-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            text-align: center;
+        }
+
+        .copy-all-btn {
+            margin-top: 10px;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .no-tokens {
+            text-align: center;
+            color: #666;
+            padding: 30px;
+        }
+
+        .token-link {
+            font-size: 11px;
+            color: #666;
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
@@ -503,6 +693,130 @@ $typeLabels = [
         </div>
         <?php endif; ?>
 
+        <?php if ($isOwner && !$scrutin['est_public']): ?>
+        <!-- Section gestion des jetons pour scrutins privés -->
+        <div class="card">
+            <h2>Jetons d'invitation</h2>
+
+            <?php if ($tokenMessage): ?>
+            <div class="alert alert-success"><?php echo htmlspecialchars($tokenMessage); ?></div>
+            <?php endif; ?>
+
+            <?php if ($tokenError): ?>
+            <div class="alert alert-error"><?php echo htmlspecialchars($tokenError); ?></div>
+            <?php endif; ?>
+
+            <div class="tokens-header">
+                <div class="tokens-stats">
+                    <div class="stat-box">
+                        <div class="stat-value"><?php echo $tokenStats['total']; ?></div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value"><?php echo $tokenStats['utilises']; ?></div>
+                        <div class="stat-label">Utilises</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value"><?php echo $tokenStats['disponibles']; ?></div>
+                        <div class="stat-label">Disponibles</div>
+                    </div>
+                </div>
+
+                <form method="POST" class="generate-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+                    <input type="hidden" name="token_action" value="generate">
+                    <label>Generer</label>
+                    <input type="number" name="token_count" value="10" min="1" max="500">
+                    <button type="submit" class="btn btn-primary">jetons</button>
+                </form>
+            </div>
+
+            <?php
+            // Afficher les jetons nouvellement générés
+            $generatedTokens = $_SESSION['generated_tokens'] ?? null;
+            if ($generatedTokens):
+                unset($_SESSION['generated_tokens']);
+                $baseUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/' . $scrutin['code'] . '?jeton=';
+            ?>
+            <div class="generated-tokens">
+                <h3>Jetons generes</h3>
+                <div class="tokens-list">
+                    <?php foreach ($generatedTokens as $token): ?>
+                    <div class="token-item">
+                        <?php echo htmlspecialchars($token); ?>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <button class="btn btn-secondary copy-all-btn" onclick="copyAllTokens()">Copier tous les liens</button>
+                <button class="btn btn-primary copy-all-btn" onclick="exportTokensCsv()">Exporter CSV</button>
+
+                <textarea id="all-tokens-urls" style="position: absolute; left: -9999px;"><?php
+                    foreach ($generatedTokens as $token) {
+                        echo $baseUrl . $token . "\n";
+                    }
+                ?></textarea>
+
+                <script>
+                var generatedTokens = <?php echo json_encode($generatedTokens); ?>;
+                var baseUrl = <?php echo json_encode($baseUrl); ?>;
+                </script>
+            </div>
+            <?php endif; ?>
+
+            <?php if (empty($tokens)): ?>
+            <div class="no-tokens">
+                <p>Aucun jeton genere pour ce scrutin.</p>
+                <p>Generez des jetons pour permettre aux participants de voter.</p>
+            </div>
+            <?php else: ?>
+            <table class="tokens-table">
+                <thead>
+                    <tr>
+                        <th>Jeton</th>
+                        <th>Lien</th>
+                        <th>Statut</th>
+                        <th>Date utilisation</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $baseUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/' . $scrutin['code'] . '?jeton=';
+                    foreach ($tokens as $token):
+                    ?>
+                    <tr>
+                        <td><span class="token-code"><?php echo htmlspecialchars($token['code']); ?></span></td>
+                        <td>
+                            <span class="token-link"><?php echo htmlspecialchars($baseUrl . $token['code']); ?></span>
+                        </td>
+                        <td>
+                            <?php if ($token['est_utilise']): ?>
+                            <span class="token-status token-used">Utilise</span>
+                            <?php else: ?>
+                            <span class="token-status token-available">Disponible</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php echo $token['utilise_at'] ? date('d/m/Y H:i', strtotime($token['utilise_at'])) : '-'; ?>
+                        </td>
+                        <td>
+                            <?php if (!$token['est_utilise']): ?>
+                            <form method="POST" style="display: inline;" onsubmit="return confirm('Revoquer ce jeton ?');">
+                                <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+                                <input type="hidden" name="token_action" value="revoke">
+                                <input type="hidden" name="token_id" value="<?php echo $token['id']; ?>">
+                                <button type="submit" class="btn btn-danger btn-small">Revoquer</button>
+                            </form>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
         <?php if ($isOwner): ?>
         <div class="card">
             <h2>Partage</h2>
@@ -522,7 +836,42 @@ $typeLabels = [
         const input = document.getElementById('share-url');
         input.select();
         document.execCommand('copy');
-        alert('Lien copié !');
+        alert('Lien copie !');
+    }
+
+    function copyAllTokens() {
+        const textarea = document.getElementById('all-tokens-urls');
+        if (textarea) {
+            textarea.style.position = 'fixed';
+            textarea.style.left = '0';
+            textarea.select();
+            document.execCommand('copy');
+            textarea.style.position = 'absolute';
+            textarea.style.left = '-9999px';
+            alert('Tous les liens ont ete copies !');
+        }
+    }
+
+    function exportTokensCsv() {
+        if (typeof generatedTokens === 'undefined' || typeof baseUrl === 'undefined') {
+            alert('Aucun jeton a exporter');
+            return;
+        }
+
+        var csv = 'Jeton,Lien\n';
+        generatedTokens.forEach(function(token) {
+            csv += token + ',' + baseUrl + token + '\n';
+        });
+
+        var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement('a');
+        var url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'jetons_<?php echo $scrutin['code']; ?>.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
     </script>
 </body>

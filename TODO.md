@@ -69,7 +69,9 @@
 ## A faire
 
 ### Fonctionnalites manquantes
-- [ ] Verification jeton pour scrutins prives
+- [x] Verification jeton pour scrutins prives
+- [x] Generation et gestion des jetons (scrutin-view.php)
+- [x] Suivi des jetons (statut, revocation, export CSV)
 - [ ] Gestion des lots (prefere du lot)
 - [ ] Export resultats (CSV, PDF?)
 - [ ] Emails de notification

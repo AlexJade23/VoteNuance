@@ -196,6 +196,58 @@ chmod 755 uploads
 - [x] Menu unifie sur toutes les pages
 - [x] Pas d'impasse de navigation
 
+### Scrutins prives (jetons)
+- [x] Verification du jeton a l'acces au vote
+- [x] Generation de jetons (1 a 500 par lot)
+- [x] Suivi des jetons (statut, date utilisation)
+- [x] Revocation des jetons non utilises
+- [x] Export CSV des jetons avec liens
+
+## Scrutins publics vs prives
+
+### Scrutin public (`est_public = 1`)
+- Accessible a tous sans authentification
+- Pas de jeton requis
+- Ideal pour consultations ouvertes
+
+### Scrutin prive (`est_public = 0`)
+- Necessite un **jeton d'invitation** pour voter
+- L'organisateur genere des jetons depuis la page du scrutin
+- Chaque jeton = 1 vote maximum
+- Le jeton peut etre transmis par :
+  - Lien direct : `https://site.com/CODE?jeton=ABCD1234`
+  - Saisie manuelle sur la page de vote
+
+### Cycle de vie d'un jeton
+
+```
+[Generation] -> [Distribution] -> [Utilisation] -> [Marque utilise]
+                     |
+                     v
+              [Revocation] (si non utilise)
+```
+
+1. **Generation** : L'organisateur genere N jetons depuis `scrutin-view.php`
+2. **Distribution** : Export CSV ou copie des liens pour envoi aux participants
+3. **Utilisation** : Le participant accede au vote avec son jeton
+4. **Verification** : Le systeme verifie que le jeton existe et n'est pas utilise
+5. **Vote** : Si valide, le participant peut voter
+6. **Marquage** : Apres le vote, le jeton est marque comme utilise
+
+### Format des jetons
+
+- 8 caracteres alphanumeriques
+- Majuscules + chiffres (sans I, O, 0, 1 pour eviter confusion)
+- Exemple : `ABCD1234`, `XY7KM3NP`
+
+### Interface organisateur
+
+Sur la page du scrutin (`/CODE/s/` ou vue detail), l'organisateur voit :
+- **Statistiques** : Total / Utilises / Disponibles
+- **Formulaire** : Generer X jetons
+- **Tableau** : Liste complete avec statut et actions
+- **Export** : Boutons "Copier tous les liens" et "Exporter CSV"
+
 ## Securite
 
 - HTTPS obligatoire en production
@@ -237,9 +289,18 @@ chmod 755 uploads
 - [x] Calcul et affichage des resultats (algorithme Vote Nuance)
 - [x] Verification individuelle (ballot_secret)
 - [x] Navigation unifiee
-- [ ] Gestion des jetons (scrutins prives)
+- [x] Gestion des jetons (scrutins prives)
 - [ ] Export des resultats (CSV/PDF)
 - [ ] Emails de notification
+
+## Backlog
+
+Voir [BACKLOG.md](BACKLOG.md) pour le backlog Agile complet avec User Stories.
+
+### Prochaines priorites
+1. **US-004** : Export CSV des resultats
+2. **US-005** : Export PDF des resultats
+3. **US-006** : Question "Prefere du lot"
 
 ## Licence
 
