@@ -551,7 +551,9 @@ function renderNavigation($activePage = '') {
 
     $html = '<nav class="main-nav">';
     $html .= '<div class="nav-container">';
-    $html .= '<a href="/" class="nav-brand">Vote Nuance</a>';
+    $html .= '<a href="https://decision-collective.fr/" class="nav-brand" target="_blank" title="Découvrir le concept">';
+    $html .= '<img src="https://decision-collective.fr/wp-content/uploads/2021/12/logov7long.png" alt="Décision Collective" class="nav-logo">';
+    $html .= '</a>';
     $html .= '<div class="nav-links">';
 
     if ($isLoggedIn && $user) {
@@ -592,10 +594,13 @@ function getNavigationCSS() {
         height: 56px;
     }
     .nav-brand {
-        color: white;
-        font-size: 18px;
-        font-weight: 700;
+        display: flex;
+        align-items: center;
         text-decoration: none;
+    }
+    .nav-logo {
+        height: 36px;
+        width: auto;
     }
     .nav-links {
         display: flex;

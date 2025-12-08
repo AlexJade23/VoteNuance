@@ -184,6 +184,11 @@ $csrfToken = generateCsrfToken();
 </head>
 <body>
     <div class="container">
+        <div style="text-align: center; margin-bottom: 25px;">
+            <a href="https://decision-collective.fr/" target="_blank" title="Découvrir le concept">
+                <img src="https://decision-collective.fr/wp-content/uploads/2021/12/logov7long.png" alt="Décision Collective" style="height: 50px; width: auto;">
+            </a>
+        </div>
         <h1>Connexion</h1>
         <p class="subtitle">Authentification respectueuse de votre vie privée</p>
         

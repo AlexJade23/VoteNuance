@@ -199,6 +199,9 @@
 <body>
     <div class="container">
         <header>
+            <a href="https://decision-collective.fr/" target="_blank" title="Découvrir le concept, la vidéo et les ressources">
+                <img src="https://decision-collective.fr/wp-content/uploads/2021/12/logov7long.png" alt="Décision Collective" style="height: 60px; width: auto; margin-bottom: 20px;">
+            </a>
             <h1>VOTE NUANCÉ</h1>
             <p class="tagline">
                 Votez pour ceux que vous approuvez et contre ceux que vous désapprouvez,
