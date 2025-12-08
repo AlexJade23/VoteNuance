@@ -20,11 +20,10 @@ Permettre des consultations democratiques avec une methode de vote plus expressi
 
 | Aspect | Jugement Majoritaire | Vote Nuance |
 |--------|---------------------|-------------|
-| Methode | Mediane | Somme ponderee |
-| Votes ignores | 50% | 0% |
-| Sans Avis | Compte comme vote | Poids 0.5 |
+| Methode | Mediane | Différence entre Partisans et Opposants |
+| Votes ignores | ceux qui n'ont pas voté pour le gagnant | ceux qui sont sans avis |
 
-Le Vote Nuance prend en compte **tous les votants ayant un avis**, contrairement au Jugement Majoritaire qui utilise la mediane et ignore la moitie des votes.
+Le Vote Nuance prend en compte **tous les votants ayant un avis**, contrairement au Jugement Majoritaire qui utilise la mediane et peut ignorer les votes dès que la mediane est depassee, soit un peu moins de la moitie des votes.
 
 ## Echelle de vote
 
