@@ -559,6 +559,8 @@ function getScrutinStatus($scrutin) {
         if (e.target === this) closeModal();
     });
     </script>
+
+    <?php echo renderFooter(); ?>
     </div>
 </body>
 </html>

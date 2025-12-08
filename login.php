@@ -244,6 +244,11 @@ $csrfToken = generateCsrfToken();
             Nous ne stockons que le strict nécessaire.<br>
             Aucune donnée n'est partagée avec des tiers.
         </div>
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="https://buy.stripe.com/aEUeWy74mgRwc2Q8wB" target="_blank" style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; font-weight: 500; text-decoration: none; font-size: 14px;">
+                Soutenir le projet
+            </a>
+        </div>
     </div>
 </body>
 </html>

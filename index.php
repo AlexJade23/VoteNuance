@@ -246,9 +246,14 @@
             </ul>
         </div>
 
-        <footer>
-            <a href="my-data.php">Mes données</a> ·
-            <a href="#">Aide</a>
+        <footer style="margin-top: 60px; text-align: center; font-size: 13px; color: #888; border-top: 1px solid #eee; padding-top: 20px;">
+            <div>
+                <a href="https://decision-collective.fr/" target="_blank" style="color: #667eea; text-decoration: none;">Découvrir le concept</a> ·
+                <a href="my-data.php" style="color: #667eea; text-decoration: none;">Mes données</a>
+            </div>
+            <a href="https://buy.stripe.com/aEUeWy74mgRwc2Q8wB" target="_blank" style="display: inline-block; margin-top: 12px; padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; font-weight: 500; text-decoration: none;">
+                Soutenir le projet
+            </a>
         </footer>
     </div>
 </body>

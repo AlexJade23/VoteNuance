@@ -229,6 +229,8 @@ if (!$user) {
             </div>
         </div>
     </div>
+
+    <?php echo renderFooter(); ?>
     </div>
 </body>
 </html>

@@ -956,5 +956,7 @@ $typeLabels = [
         alert('Tous les liens ont ete copies !');
     }
     </script>
+
+    <?php echo renderFooter(); ?>
 </body>
 </html>

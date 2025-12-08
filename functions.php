@@ -632,10 +632,55 @@ function getNavigationCSS() {
     }
     @media (max-width: 600px) {
         .nav-container { height: auto; flex-wrap: wrap; padding: 10px 0; }
-        .nav-brand { width: 100%; text-align: center; margin-bottom: 10px; }
+        .nav-brand { width: 100%; text-align: center; margin-bottom: 10px; justify-content: center; }
         .nav-links { width: 100%; justify-content: center; flex-wrap: wrap; }
         .nav-link { padding: 6px 12px; font-size: 13px; }
     }
+    .site-footer {
+        margin-top: 40px;
+        padding: 20px;
+        text-align: center;
+        font-size: 13px;
+        color: #888;
+        border-top: 1px solid #eee;
+    }
+    .site-footer a {
+        color: #667eea;
+        text-decoration: none;
+    }
+    .site-footer a:hover {
+        text-decoration: underline;
+    }
+    .site-footer .donate-link {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+    .site-footer .donate-link:hover {
+        opacity: 0.9;
+        text-decoration: none;
+    }
+    ';
+}
+
+/**
+ * Afficher le pied de page avec lien de don
+ */
+function renderFooter() {
+    return '
+    <footer style="margin-top: 40px; padding: 20px; text-align: center; font-size: 13px; color: #888; border-top: 1px solid #eee;">
+        <div>
+            <a href="https://decision-collective.fr/" target="_blank" style="color: #667eea; text-decoration: none;">Découvrir le concept</a> ·
+            <a href="/my-data.php" style="color: #667eea; text-decoration: none;">Mes données</a>
+        </div>
+        <a href="https://buy.stripe.com/aEUeWy74mgRwc2Q8wB" target="_blank" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; font-weight: 500; text-decoration: none;">
+            Soutenir le projet
+        </a>
+    </footer>
     ';
 }
 

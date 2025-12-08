@@ -1077,6 +1077,8 @@ $csrfToken = generateCsrfToken();
         hiddenInput.value = '';
     }
     </script>
+
+    <?php echo renderFooter(); ?>
     </div>
 </body>
 </html>
