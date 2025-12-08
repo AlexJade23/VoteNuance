@@ -21,11 +21,11 @@ if (!defined('GOOGLE_CLIENT_ID')) define('GOOGLE_CLIENT_ID', 'VOTRE_CLIENT_ID_GO
 if (!defined('GOOGLE_CLIENT_SECRET')) define('GOOGLE_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET_GOOGLE');
 if (!defined('GOOGLE_REDIRECT_URI')) define('GOOGLE_REDIRECT_URI', 'https://votresite.com/callback.php');
 
-// Configuration Microsoft OAuth
-define('MICROSOFT_CLIENT_ID', 'VOTRE_CLIENT_ID_MICROSOFT');
-define('MICROSOFT_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET_MICROSOFT');
-define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
-define('MICROSOFT_TENANT', 'common'); // 'common' pour comptes personnels et professionnels
+// Configuration Microsoft OAuth (valeurs par défaut si secrets non chargés)
+if (!defined('MICROSOFT_CLIENT_ID')) define('MICROSOFT_CLIENT_ID', 'VOTRE_CLIENT_ID_MICROSOFT');
+if (!defined('MICROSOFT_CLIENT_SECRET')) define('MICROSOFT_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET_MICROSOFT');
+if (!defined('MICROSOFT_REDIRECT_URI')) define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
+if (!defined('MICROSOFT_TENANT')) define('MICROSOFT_TENANT', 'common'); // 'common' pour comptes personnels et professionnels
 
 // URLs OAuth
 define('GOOGLE_AUTH_URL', 'https://accounts.google.com/o/oauth2/v2/auth');
