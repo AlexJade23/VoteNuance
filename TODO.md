@@ -84,6 +84,11 @@
 
 ## A faire
 
+### Corrections prioritaires
+- [ ] **Bug classement ex aequo** : Le departage ne fonctionne pas correctement
+  - Regle a appliquer : si classement egal, departager par AP-AC, puis FP-FC, puis PP-PC
+  - Fichier : scrutin-results.php (fonction sortByClassement)
+
 ### Fonctionnalites manquantes
 - [ ] Emails de notification
 - [ ] Suppression automatique anciennes images non utilisees
