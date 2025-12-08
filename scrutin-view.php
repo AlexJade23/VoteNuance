@@ -68,8 +68,12 @@ if (!$scrutin['est_public'] && $isOwner) {
     $tokens = getTokensByScrutin($scrutin['id']);
 }
 
-// Verifier si des votes existent
-$hasVotes = ($scrutin['nb_votes'] ?? 0) > 0;
+// Compter les votes pour ce scrutin
+$pdo = getDbConnection();
+$stmt = $pdo->prepare('SELECT COUNT(DISTINCT ballot_hash) FROM bulletins WHERE scrutin_id = ? AND est_test = 0');
+$stmt->execute([$scrutin['id']]);
+$nbVotes = (int) $stmt->fetchColumn();
+$hasVotes = $nbVotes > 0;
 
 $csrfToken = generateCsrfToken();
 
