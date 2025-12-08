@@ -66,14 +66,25 @@
 - [x] Titre resultats : "Classement par taux de partisans net"
 - [x] Suppression ligne stats inutile sous legende
 
+### Gestion des lots
+- [x] Question "Prefere du lot" (type=3)
+- [x] Melange aleatoire des questions d'un lot > 0 (anti-biais d'ordre)
+- [x] Options "Prefere du lot" generees automatiquement depuis les titres du lot
+- [x] Validation : lot > 0 n'accepte que type 0 et 3
+- [x] Resultats par lot (un graphe de classement par lot)
+- [x] Pas de graphe "ordre initial" pour lots > 0 (ordre aleatoire)
+
+### Export resultats
+- [x] Export CSV des resultats (avec sections par lot)
+- [x] Export PDF des resultats (format A4, impression navigateur)
+- [x] Recepisse de vote avec QR code
+
+### Conservation des donnees en cas d'erreur
+- [x] Les questions saisies sont conservees si erreur a la creation
+
 ## A faire
 
 ### Fonctionnalites manquantes
-- [x] Verification jeton pour scrutins prives
-- [x] Generation et gestion des jetons (scrutin-view.php)
-- [x] Suivi des jetons (statut, revocation, export CSV)
-- [ ] Gestion des lots (prefere du lot)
-- [ ] Export resultats (CSV, PDF?)
 - [ ] Emails de notification
 - [ ] Suppression automatique anciennes images non utilisees
 

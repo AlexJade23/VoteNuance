@@ -157,18 +157,29 @@ plutot qu'une librairie PDF externe. Avantages :
 - [x] Interface vote : selection unique parmi les options du lot
 - [x] Resultats : classement par nombre de votes
 - [x] Affichage barres avec gagnant en vert
+- [x] Melange aleatoire des questions d'un lot > 0 (anti-biais d'ordre)
+- [x] Options generees automatiquement depuis les titres des questions Vote Nuance du lot
+- [x] Validation : lot > 0 n'accepte que type 0 (Vote Nuance) et type 3 (Prefere du lot)
+- [x] Resultats affiches par lot (un graphe de classement par lot)
+- [x] Pas de graphe "ordre initial" pour lots > 0 (car ordre aleatoire)
 
 #### Taches techniques
 - [x] Type "prefere_lot" deja present dans scrutin-create.php
 - [x] Modifier vote.php pour gerer ce type (radio buttons)
 - [x] Modifier scrutin-results.php pour afficher resultats
 - [x] Export CSV inclut les resultats "prefere du lot"
+- [x] Fonction shuffleQuestionsInLots() pour melange aleatoire
+- [x] Fonction getQuestionTitlesForLot() pour generer les options
+- [x] Validation des lots dans scrutin-create.php et scrutin-edit.php
+- [x] Groupement des resultats par lot dans scrutin-results.php
+- [x] Conservation des questions saisies en cas d'erreur
 
 #### Fichiers concernes
 - scrutin-create.php
 - scrutin-edit.php
 - vote.php
 - scrutin-results.php
+- functions.php
 
 ---
 

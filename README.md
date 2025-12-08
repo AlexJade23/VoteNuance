@@ -186,6 +186,8 @@ chmod 755 uploads
 - [x] Option "Scrutin public" (sans connexion requise)
 - [x] Ordre des mentions configurable (Pour->Contre ou Contre->Pour)
 - [x] Archivage des scrutins (protection contre modification si votes)
+- [x] Gestion des lots avec melange aleatoire (anti-biais d'ordre)
+- [x] Conservation des questions saisies en cas d'erreur de validation
 
 ### Vote
 - [x] Interface responsive (desktop et mobile)
@@ -198,9 +200,9 @@ chmod 755 uploads
 ### Resultats
 - [x] Algorithme Vote Nuance complet
 - [x] Normalisation automatique des Sans Avis manquants
-- [x] 2 graphiques : ordre initial et classement
+- [x] Graphiques par lot (ordre initial + classement pour lot 0, classement seul pour lots > 0)
 - [x] Affichage QCM, prefere du lot et reponses ouvertes
-- [x] Export CSV des resultats
+- [x] Export CSV des resultats (avec sections par lot)
 - [x] Export PDF des resultats (format A4 paysage avec graphiques)
 
 ### Scrutins prives (jetons)
@@ -318,10 +320,13 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - [x] Gestion des jetons (scrutins prives)
 - [x] Export CSV des resultats
 - [x] Export PDF des resultats (A4 paysage avec graphiques)
-- [x] Question "Prefere du lot"
+- [x] Question "Prefere du lot" (options generees automatiquement depuis les titres du lot)
 - [x] Recepisse de vote imprimable avec QR code
 - [x] Page de verification de vote (`/verify`)
 - [x] Archivage des scrutins
+- [x] Melange aleatoire des questions par lot (anti-biais d'ordre)
+- [x] Resultats groupes par lot
+- [x] Conservation des questions saisies en cas d'erreur
 
 ### A venir
 - [ ] Paiement Stripe pour les jetons (priorite haute)
