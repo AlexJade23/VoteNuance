@@ -65,15 +65,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Au moins une question est requise';
         }
 
-        // Validation des lots : seuls types 0 (Vote Nuancé) et 3 (Préféré du lot) autorisés dans un lot
+        // Validation des lots > 0 : seuls types 0 (Vote Nuancé) et 3 (Préféré du lot) autorisés
+        // Le lot 0 n'est pas un vrai lot, il accepte tous les types
         $lotTypes = [];
         foreach ($newQuestions as $q) {
             $lot = intval($q['lot'] ?? 0);
             $type = intval($q['type'] ?? 0);
-            if (!isset($lotTypes[$lot])) {
-                $lotTypes[$lot] = [];
+            if ($lot > 0) { // Seulement pour les vrais lots
+                if (!isset($lotTypes[$lot])) {
+                    $lotTypes[$lot] = [];
+                }
+                $lotTypes[$lot][] = $type;
             }
-            $lotTypes[$lot][] = $type;
         }
         foreach ($lotTypes as $lotNum => $types) {
             foreach ($types as $type) {
