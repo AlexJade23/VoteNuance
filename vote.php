@@ -18,6 +18,11 @@ if (!$scrutin) {
 $questions = getQuestionsByScrutin($scrutin['id']);
 $mentions = getMentionsByEchelle(1);
 
+// Mélanger aléatoirement les questions appartenant à un même lot
+// Les questions avec lot=0 gardent leur position d'origine
+// Les questions d'un même lot > 0 sont mélangées entre elles
+$questions = shuffleQuestionsInLots($questions);
+
 // Inverser l'ordre si demandé (1 = Pour vers Contre)
 if ($scrutin['ordre_mentions'] ?? 0) {
     $mentions = array_reverse($mentions);

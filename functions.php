@@ -414,6 +414,55 @@ function getQuestionsByScrutin($scrutinId) {
 }
 
 /**
+ * Mélanger aléatoirement les questions appartenant à un même lot
+ * Les questions avec lot=0 gardent leur position d'origine
+ * Les questions d'un même lot > 0 sont mélangées entre elles
+ */
+function shuffleQuestionsInLots($questions) {
+    if (empty($questions)) {
+        return $questions;
+    }
+
+    // Identifier les lots présents (lot > 0)
+    $lots = [];
+    foreach ($questions as $idx => $q) {
+        $lot = intval($q['lot'] ?? 0);
+        if ($lot > 0) {
+            if (!isset($lots[$lot])) {
+                $lots[$lot] = [];
+            }
+            $lots[$lot][] = $idx;
+        }
+    }
+
+    // Si aucun lot, retourner tel quel
+    if (empty($lots)) {
+        return $questions;
+    }
+
+    // Pour chaque lot, mélanger les indices
+    foreach ($lots as $lotNum => $indices) {
+        if (count($indices) > 1) {
+            // Extraire les questions de ce lot
+            $lotQuestions = [];
+            foreach ($indices as $idx) {
+                $lotQuestions[] = $questions[$idx];
+            }
+
+            // Mélanger
+            shuffle($lotQuestions);
+
+            // Remettre en place
+            foreach ($indices as $i => $idx) {
+                $questions[$idx] = $lotQuestions[$i];
+            }
+        }
+    }
+
+    return $questions;
+}
+
+/**
  * Supprimer les questions d'un scrutin
  */
 function deleteQuestionsByScrutin($scrutinId) {
