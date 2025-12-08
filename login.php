@@ -194,12 +194,8 @@ $csrfToken = generateCsrfToken();
                 <div class="checkbox-wrapper">
                     <label>
                         <input type="checkbox" name="consent_email_hash" value="1" id="consentCheckbox">
-                        <span>Autoriser le stockage d'un hash de mon email</span>
+                        <span>Autoriser le stockage de mon email crypté pour recevoir les notifications de vote.</span>
                     </label>
-                    <p class="help-text">
-                        Permet d'éviter les doublons si vous utilisez plusieurs méthodes de connexion. 
-                        Le hash est irréversible et ne permet pas de retrouver votre email.
-                    </p>
                 </div>
                 
                 <div class="input-group">
