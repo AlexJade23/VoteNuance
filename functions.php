@@ -414,20 +414,22 @@ function getQuestionsByScrutin($scrutinId) {
 }
 
 /**
- * Mélanger aléatoirement les questions appartenant à un même lot
+ * Mélanger aléatoirement les questions Vote Nuancé (type=0) appartenant à un même lot
  * Les questions avec lot=0 gardent leur position d'origine
- * Les questions d'un même lot > 0 sont mélangées entre elles
+ * Les questions "Préféré du lot" (type=3) ne sont JAMAIS mélangées
  */
 function shuffleQuestionsInLots($questions) {
     if (empty($questions)) {
         return $questions;
     }
 
-    // Identifier les lots présents (lot > 0)
+    // Identifier les lots présents (lot > 0) avec uniquement les questions Vote Nuancé (type=0)
     $lots = [];
     foreach ($questions as $idx => $q) {
         $lot = intval($q['lot'] ?? 0);
-        if ($lot > 0) {
+        $type = intval($q['type_question'] ?? 0);
+        // Seules les questions Vote Nuancé (type=0) avec lot > 0 sont mélangées
+        if ($lot > 0 && $type === 0) {
             if (!isset($lots[$lot])) {
                 $lots[$lot] = [];
             }
@@ -460,6 +462,22 @@ function shuffleQuestionsInLots($questions) {
     }
 
     return $questions;
+}
+
+/**
+ * Récupérer les titres des questions Vote Nuancé d'un lot donné
+ * Utilisé pour générer les options d'une question "Préféré du lot"
+ */
+function getQuestionTitlesForLot($scrutinId, $lotNum) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT id, titre
+        FROM questions
+        WHERE scrutin_id = ? AND lot = ? AND type_question = 0
+        ORDER BY ordre
+    ');
+    $stmt->execute([$scrutinId, $lotNum]);
+    return $stmt->fetchAll();
 }
 
 /**
