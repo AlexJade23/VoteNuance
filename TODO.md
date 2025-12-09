@@ -98,6 +98,7 @@
 - [ ] Compression automatique des images
 - [ ] Preview video YouTube/Vimeo
 - [ ] Mode sombre
+- [ ] border-radius: 6px; sur le style .nav-logo
 
 ## Notes techniques
 
