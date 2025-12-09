@@ -668,7 +668,7 @@ foreach ($lotsData as $lotNum => $data) {
                 if (lotData.classement && lotData.classement.length > 0) {
                     var lotTitle = lotNum == 0 ? 'RESULTATS VOTE NUANCE' : 'RESULTATS VOTE NUANCE - LOT ' + lotNum;
                     csv += '=== ' + lotTitle + ' ===\n';
-                    csv += 'Rang,Question,Classement,AC,FC,PC,SA,PP,FP,AP,Total,Taux Partisans Net\n';
+                    csv += 'Rang,Question,Classement,AC,FC,PC,SA,PP,FP,AP,AP-AC,FP-FC,PP-PC,Total,Taux Partisans Net\n';
 
                     lotData.classement.forEach(function(r, idx) {
                         var counts = r.counts || {};
@@ -682,6 +682,9 @@ foreach ($lotsData as $lotNum => $data) {
                         csv += (counts[5] || 0) + ',';
                         csv += (counts[6] || 0) + ',';
                         csv += (counts[7] || 0) + ',';
+                        csv += (r.niveau1 || 0) + ',';
+                        csv += (r.niveau2 || 0) + ',';
+                        csv += (r.niveau3 || 0) + ',';
                         csv += r.total + ',';
                         csv += r.tauxPartisansNet + '%\n';
                     });
