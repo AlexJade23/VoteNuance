@@ -85,9 +85,10 @@
 ## A faire
 
 ### Corrections prioritaires
-- [ ] **Bug classement ex aequo** : Le departage ne fonctionne pas correctement
+- [x] **Bug classement ex aequo** : Le departage ne fonctionne pas correctement
   - Regle a appliquer : si classement egal, departager par AP-AC, puis FP-FC, puis PP-PC
   - Fichier : scrutin-results.php (fonction sortByClassement)
+  - Corrige : utilisation de l'operateur spaceship (<=>) pour comparaisons propres
 
 ### Fonctionnalites manquantes
 - [ ] Emails de notification
@@ -98,7 +99,7 @@
 - [ ] Compression automatique des images
 - [ ] Preview video YouTube/Vimeo
 - [ ] Mode sombre
-- [ ] border-radius: 6px; sur le style .nav-logo
+- [x] border-radius: 6px; sur le style .nav-logo
 
 ## Notes techniques
 

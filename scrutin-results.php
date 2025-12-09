@@ -213,10 +213,20 @@ function normalizeResults(&$results) {
 // Fonction pour trier par classement
 function sortByClassement($results) {
     usort($results, function($a, $b) {
-        if ($a['classement'] != $b['classement']) return $b['classement'] - $a['classement'];
-        if ($a['niveau1'] != $b['niveau1']) return $b['niveau1'] - $a['niveau1'];
-        if ($a['niveau2'] != $b['niveau2']) return $b['niveau2'] - $a['niveau2'];
-        return $b['niveau3'] - $a['niveau3'];
+        // 1. Trier par classement décroissant
+        $cmp = $b['classement'] <=> $a['classement'];
+        if ($cmp !== 0) return $cmp;
+
+        // 2. Départage niveau 1 : AP - AC (avis absolus)
+        $cmp = $b['niveau1'] <=> $a['niveau1'];
+        if ($cmp !== 0) return $cmp;
+
+        // 3. Départage niveau 2 : FP - FC (avis francs)
+        $cmp = $b['niveau2'] <=> $a['niveau2'];
+        if ($cmp !== 0) return $cmp;
+
+        // 4. Départage niveau 3 : PP - PC (avis normaux)
+        return $b['niveau3'] <=> $a['niveau3'];
     });
     return $results;
 }

@@ -601,6 +601,7 @@ function getNavigationCSS() {
     .nav-logo {
         height: 36px;
         width: auto;
+        border-radius: 6px;
     }
     .nav-links {
         display: flex;
