@@ -167,13 +167,29 @@ foreach ($questions as $question) {
 // Copier pour l'ordre initial
 $nuanceResultsOrdre = $nuanceResults;
 
+// Fonction pour trier par classement avec départage
+function sortByClassement($results) {
+    usort($results, function($a, $b) {
+        // 1. Trier par classement décroissant
+        $cmp = $b['classement'] <=> $a['classement'];
+        if ($cmp !== 0) return $cmp;
+
+        // 2. Départage niveau 1 : AP - AC (avis absolus)
+        $cmp = $b['niveau1'] <=> $a['niveau1'];
+        if ($cmp !== 0) return $cmp;
+
+        // 3. Départage niveau 2 : FP - FC (avis francs)
+        $cmp = $b['niveau2'] <=> $a['niveau2'];
+        if ($cmp !== 0) return $cmp;
+
+        // 4. Départage niveau 3 : PP - PC (avis normaux)
+        return $b['niveau3'] <=> $a['niveau3'];
+    });
+    return $results;
+}
+
 // Trier par classement decroissant
-usort($nuanceResults, function($a, $b) {
-    if ($a['classement'] != $b['classement']) return $b['classement'] - $a['classement'];
-    if ($a['niveau1'] != $b['niveau1']) return $b['niveau1'] - $a['niveau1'];
-    if ($a['niveau2'] != $b['niveau2']) return $b['niveau2'] - $a['niveau2'];
-    return $b['niveau3'] - $a['niveau3'];
-});
+$nuanceResults = sortByClassement($nuanceResults);
 
 // Garder l'ordre initial pour le 2e graphique
 usort($nuanceResultsOrdre, function($a, $b) {
@@ -505,6 +521,9 @@ $dateExport = date('d/m/Y H:i');
                     <th>PP</th>
                     <th>FP</th>
                     <th>AP</th>
+                    <th>AP-AC</th>
+                    <th>FP-FC</th>
+                    <th>PP-PC</th>
                     <th>Total</th>
                     <th>Taux Net</th>
                 </tr>
@@ -522,6 +541,9 @@ $dateExport = date('d/m/Y H:i');
                     <td><?php echo $r['counts'][5] ?? 0; ?></td>
                     <td><?php echo $r['counts'][6] ?? 0; ?></td>
                     <td><?php echo $r['counts'][7] ?? 0; ?></td>
+                    <td class="<?php echo $r['niveau1'] >= 0 ? 'score-positive' : 'score-negative'; ?>"><?php echo ($r['niveau1'] >= 0 ? '+' : '') . $r['niveau1']; ?></td>
+                    <td class="<?php echo $r['niveau2'] >= 0 ? 'score-positive' : 'score-negative'; ?>"><?php echo ($r['niveau2'] >= 0 ? '+' : '') . $r['niveau2']; ?></td>
+                    <td class="<?php echo $r['niveau3'] >= 0 ? 'score-positive' : 'score-negative'; ?>"><?php echo ($r['niveau3'] >= 0 ? '+' : '') . $r['niveau3']; ?></td>
                     <td><?php echo $r['total']; ?></td>
                     <td class="<?php echo $r['tauxPartisansNet'] >= 0 ? 'score-positive' : 'score-negative'; ?>">
                         <?php echo ($r['tauxPartisansNet'] >= 0 ? '+' : '') . $r['tauxPartisansNet']; ?>%
@@ -534,7 +556,8 @@ $dateExport = date('d/m/Y H:i');
         <p style="font-size: 9pt; color: #666;">
             <strong>Legende :</strong> AC = Absolument Contre, FC = Franchement Contre, PC = Plutot Contre,
             SA = Sans Avis, PP = Plutot Pour, FP = Franchement Pour, AP = Absolument Pour.<br>
-            <strong>Classement</strong> = AP + FP + PP + SA/2. <strong>Taux Net</strong> = (Pour - Contre) / Total.
+            <strong>Classement</strong> = AP + FP + PP + SA/2. <strong>Taux Net</strong> = (Pour - Contre) / Total.<br>
+            <strong>Departage ex aequo :</strong> AP-AC (avis absolus), puis FP-FC (avis francs), puis PP-PC (avis normaux).
         </p>
     </div>
     <div class="page-break"></div>
