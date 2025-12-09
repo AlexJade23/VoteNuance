@@ -213,6 +213,33 @@ function findClassementMini($results) {
     return $mini == PHP_FLOAT_MAX ? 0 : $mini;
 }
 
+// Fonction pour calculer les rangs avec ex aequo (1,2,3,3,5,6...)
+function calculateRanks($results) {
+    $ranks = [];
+    $prevResult = null;
+    $currentRank = 0;
+
+    foreach ($results as $idx => $r) {
+        $position = $idx + 1;
+
+        if ($prevResult === null) {
+            $currentRank = 1;
+        } elseif ($r['classement'] == $prevResult['classement']
+                  && $r['niveau1'] == $prevResult['niveau1']
+                  && $r['niveau2'] == $prevResult['niveau2']
+                  && $r['niveau3'] == $prevResult['niveau3']) {
+            // Ex aequo : garder le même rang
+        } else {
+            $currentRank = $position;
+        }
+
+        $ranks[] = $currentRank;
+        $prevResult = $r;
+    }
+
+    return $ranks;
+}
+
 // Construire les series pour Chart.js
 function buildChartDatasets($results, $classementMini, $mentions) {
     if (empty($results)) return [];
@@ -256,6 +283,7 @@ foreach ($resultsByLot as $lotNum => $results) {
     $classement = sortByClassement($results);
     $ordre = sortByOrdre($results);
     $classementMini = findClassementMini($classement);
+    $ranks = calculateRanks($classement);
 
     $labelsClassement = [];
     foreach ($classement as $idx => $r) {
@@ -271,6 +299,7 @@ foreach ($resultsByLot as $lotNum => $results) {
         'classement' => $classement,
         'ordre' => $ordre,
         'classementMini' => $classementMini,
+        'ranks' => $ranks,
         'labelsClassement' => $labelsClassement,
         'labelsOrdre' => $labelsOrdre,
         'datasetsClassement' => buildChartDatasets($classement, $classementMini, $mentions),
@@ -556,7 +585,7 @@ $dateExport = date('d/m/Y H:i');
             <tbody>
                 <?php foreach ($lotData['classement'] as $idx => $r): ?>
                 <tr>
-                    <td class="rank"><?php echo $idx + 1; ?></td>
+                    <td class="rank"><?php echo $lotData['ranks'][$idx]; ?></td>
                     <td class="question-cell"><?php echo htmlspecialchars($r['titre']); ?></td>
                     <td><strong><?php echo number_format($r['classement'], 1); ?></strong></td>
                     <td><?php echo $r['counts'][1] ?? 0; ?></td>

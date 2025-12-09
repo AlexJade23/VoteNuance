@@ -250,6 +250,35 @@ function findClassementMini($results) {
     return $mini == PHP_FLOAT_MAX ? 0 : $mini;
 }
 
+// Fonction pour calculer les rangs avec ex aequo (1,2,3,3,5,6...)
+function calculateRanks($results) {
+    $ranks = [];
+    $prevResult = null;
+    $currentRank = 0;
+
+    foreach ($results as $idx => $r) {
+        $position = $idx + 1;
+
+        if ($prevResult === null) {
+            // Premier élément
+            $currentRank = 1;
+        } elseif ($r['classement'] == $prevResult['classement']
+                  && $r['niveau1'] == $prevResult['niveau1']
+                  && $r['niveau2'] == $prevResult['niveau2']
+                  && $r['niveau3'] == $prevResult['niveau3']) {
+            // Ex aequo : garder le même rang
+        } else {
+            // Nouveau rang = position actuelle
+            $currentRank = $position;
+        }
+
+        $ranks[] = $currentRank;
+        $prevResult = $r;
+    }
+
+    return $ranks;
+}
+
 // Préparer les données pour chaque lot
 $lotsData = [];
 foreach ($resultsByLot as $lotNum => $results) {
@@ -258,11 +287,13 @@ foreach ($resultsByLot as $lotNum => $results) {
     $classement = sortByClassement($results);
     $ordre = sortByOrdre($results);
     $classementMini = findClassementMini($classement);
+    $ranks = calculateRanks($classement);
 
     $lotsData[$lotNum] = [
         'classement' => $classement,
         'ordre' => $ordre,
         'classementMini' => $classementMini,
+        'ranks' => $ranks,
         'showOrdre' => ($lotNum == 0) // Afficher l'ordre initial seulement pour lot 0
     ];
 }
@@ -326,6 +357,7 @@ foreach ($lotsData as $lotNum => $data) {
         'datasetsOrdre' => buildChartDatasets($data['ordre'], $data['classementMini'], $mentions),
         'classement' => $data['classement'],
         'ordre' => $data['ordre'],
+        'ranks' => $data['ranks'],
         'showOrdre' => $data['showOrdre']
     ];
 }
@@ -672,7 +704,8 @@ foreach ($lotsData as $lotNum => $data) {
 
                     lotData.classement.forEach(function(r, idx) {
                         var counts = r.counts || {};
-                        csv += (idx + 1) + ',';
+                        var rank = lotData.ranks ? lotData.ranks[idx] : (idx + 1);
+                        csv += rank + ',';
                         csv += '"' + (r.titre || '').replace(/"/g, '""') + '",';
                         csv += r.classement.toFixed(1) + ',';
                         csv += (counts[1] || 0) + ',';
