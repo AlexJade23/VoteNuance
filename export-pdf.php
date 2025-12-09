@@ -150,8 +150,8 @@ $stmt = $pdo->prepare('SELECT COUNT(DISTINCT ballot_hash) FROM bulletins WHERE s
 $stmt->execute([$scrutin['id']]);
 $nbParticipants = $stmt->fetchColumn();
 
-// Collecter tous les resultats vote nuance
-$nuanceResults = [];
+// Collecter tous les resultats vote nuance GROUPÉS PAR LOT
+$resultsByLot = [];
 foreach ($questions as $question) {
     if ($question['type_question'] == 0) {
         $results = getResultsForQuestion($scrutin['id'], $question['id'], 0);
@@ -159,13 +159,19 @@ foreach ($questions as $question) {
             $results['titre'] = $question['titre'];
             $results['id'] = $question['id'];
             $results['ordre'] = $question['ordre'];
-            $nuanceResults[] = $results;
+            $results['lot'] = intval($question['lot'] ?? 0);
+
+            $lot = $results['lot'];
+            if (!isset($resultsByLot[$lot])) {
+                $resultsByLot[$lot] = [];
+            }
+            $resultsByLot[$lot][] = $results;
         }
     }
 }
 
-// Copier pour l'ordre initial
-$nuanceResultsOrdre = $nuanceResults;
+// Trier les lots par numéro
+ksort($resultsByLot);
 
 // Fonction pour trier par classement avec départage
 function sortByClassement($results) {
@@ -188,22 +194,24 @@ function sortByClassement($results) {
     return $results;
 }
 
-// Trier par classement decroissant
-$nuanceResults = sortByClassement($nuanceResults);
-
-// Garder l'ordre initial pour le 2e graphique
-usort($nuanceResultsOrdre, function($a, $b) {
-    return $a['ordre'] - $b['ordre'];
-});
-
-// Trouver le classement minimum pour le decalage (barre blanche)
-$classementMini = PHP_FLOAT_MAX;
-foreach ($nuanceResults as $r) {
-    if ($r['classement'] < $classementMini) {
-        $classementMini = $r['classement'];
-    }
+// Fonction pour trier par ordre initial
+function sortByOrdre($results) {
+    usort($results, function($a, $b) {
+        return $a['ordre'] - $b['ordre'];
+    });
+    return $results;
 }
-if ($classementMini == PHP_FLOAT_MAX) $classementMini = 0;
+
+// Fonction pour trouver le classement minimum
+function findClassementMini($results) {
+    $mini = PHP_FLOAT_MAX;
+    foreach ($results as $r) {
+        if ($r['classement'] < $mini) {
+            $mini = $r['classement'];
+        }
+    }
+    return $mini == PHP_FLOAT_MAX ? 0 : $mini;
+}
 
 // Construire les series pour Chart.js
 function buildChartDatasets($results, $classementMini, $mentions) {
@@ -242,18 +250,34 @@ function buildChartDatasets($results, $classementMini, $mentions) {
     return $datasets;
 }
 
-// Preparer les labels
-$labelsClassement = [];
-$labelsOrdre = [];
-foreach ($nuanceResults as $idx => $r) {
-    $labelsClassement[] = ($idx + 1);
-}
-foreach ($nuanceResultsOrdre as $idx => $r) {
-    $labelsOrdre[] = ($idx + 1);
-}
+// Préparer les données pour chaque lot
+$lotsData = [];
+foreach ($resultsByLot as $lotNum => $results) {
+    $classement = sortByClassement($results);
+    $ordre = sortByOrdre($results);
+    $classementMini = findClassementMini($classement);
 
-$datasetsClassement = buildChartDatasets($nuanceResults, $classementMini, $mentions);
-$datasetsOrdre = buildChartDatasets($nuanceResultsOrdre, $classementMini, $mentions);
+    $labelsClassement = [];
+    foreach ($classement as $idx => $r) {
+        $labelsClassement[] = ($idx + 1);
+    }
+
+    $labelsOrdre = [];
+    foreach ($ordre as $idx => $r) {
+        $labelsOrdre[] = ($idx + 1);
+    }
+
+    $lotsData[$lotNum] = [
+        'classement' => $classement,
+        'ordre' => $ordre,
+        'classementMini' => $classementMini,
+        'labelsClassement' => $labelsClassement,
+        'labelsOrdre' => $labelsOrdre,
+        'datasetsClassement' => buildChartDatasets($classement, $classementMini, $mentions),
+        'datasetsOrdre' => buildChartDatasets($ordre, $classementMini, $mentions),
+        'showOrdre' => ($lotNum == 0) // Afficher l'ordre initial seulement pour lot 0
+    ];
+}
 
 $dateExport = date('d/m/Y H:i');
 ?>
@@ -495,9 +519,10 @@ $dateExport = date('d/m/Y H:i');
     <p style="text-align: center; padding: 40px; color: #666;">Aucun vote n'a encore ete enregistre.</p>
     <?php else: ?>
 
-    <?php if (!empty($nuanceResults)): ?>
+    <?php foreach ($lotsData as $lotNum => $lotData): ?>
+    <?php if (!empty($lotData['classement'])): ?>
     <div class="section">
-        <h2 class="section-title">Resultats Vote Nuance - Classement</h2>
+        <h2 class="section-title"><?php echo $lotNum > 0 ? "Lot $lotNum - " : ''; ?>Resultats Vote Nuance - Classement</h2>
 
         <div class="legend">
             <?php foreach ($mentions as $m): ?>
@@ -529,7 +554,7 @@ $dateExport = date('d/m/Y H:i');
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($nuanceResults as $idx => $r): ?>
+                <?php foreach ($lotData['classement'] as $idx => $r): ?>
                 <tr>
                     <td class="rank"><?php echo $idx + 1; ?></td>
                     <td class="question-cell"><?php echo htmlspecialchars($r['titre']); ?></td>
@@ -562,33 +587,36 @@ $dateExport = date('d/m/Y H:i');
     </div>
     <div class="page-break"></div>
 
-    <!-- Graphique 1 : Ordre initial des questions -->
+    <?php if ($lotData['showOrdre']): ?>
+    <!-- Graphique ordre initial (seulement pour lot 0) -->
     <div class="section chart-section">
         <h2 class="section-title">Graphique - Ordre initial des questions</h2>
         <div class="chart-wrapper">
-            <canvas id="chartOrdre"></canvas>
+            <canvas id="chartOrdre_<?php echo $lotNum; ?>"></canvas>
         </div>
         <div class="chart-legend">
-            <?php foreach ($nuanceResultsOrdre as $idx => $r): ?>
+            <?php foreach ($lotData['ordre'] as $idx => $r): ?>
             <span><?php echo ($idx + 1); ?>. <?php echo htmlspecialchars($r['titre']); ?> |</span>
             <?php endforeach; ?>
         </div>
     </div>
     <div class="page-break"></div>
+    <?php endif; ?>
 
-    <!-- Graphique 2 : Tri par classement -->
+    <!-- Graphique classement -->
     <div class="section chart-section">
-        <h2 class="section-title">Graphique - Classement (1er a gauche)</h2>
+        <h2 class="section-title"><?php echo $lotNum > 0 ? "Lot $lotNum - " : ''; ?>Graphique - Classement (1er a gauche)</h2>
         <div class="chart-wrapper">
-            <canvas id="chartClassement"></canvas>
+            <canvas id="chartClassement_<?php echo $lotNum; ?>"></canvas>
         </div>
         <div class="chart-legend">
-            <?php foreach ($nuanceResults as $idx => $r): ?>
+            <?php foreach ($lotData['classement'] as $idx => $r): ?>
             <span><?php echo ($idx + 1); ?>. <?php echo htmlspecialchars($r['titre']); ?> |</span>
             <?php endforeach; ?>
         </div>
     </div>
     <?php endif; ?>
+    <?php endforeach; ?>
 
     <?php
     // Autres types de questions
@@ -659,13 +687,10 @@ $dateExport = date('d/m/Y H:i');
         Vote Nuance - <?php echo htmlspecialchars($scrutin['code']); ?> - Exporte le <?php echo $dateExport; ?>
     </div>
 
-    <?php if (!empty($nuanceResults)): ?>
+    <?php if (!empty($lotsData)): ?>
     <script>
-    // Donnees pour les graphiques
-    const datasetsClassement = <?php echo json_encode($datasetsClassement); ?>;
-    const datasetsOrdre = <?php echo json_encode($datasetsOrdre); ?>;
-    const labelsClassement = <?php echo json_encode($labelsClassement); ?>;
-    const labelsOrdre = <?php echo json_encode($labelsOrdre); ?>;
+    // Donnees pour les graphiques par lot
+    const lotsData = <?php echo json_encode($lotsData); ?>;
 
     // Configuration commune Chart.js
     const chartOptions = {
@@ -683,25 +708,32 @@ $dateExport = date('d/m/Y H:i');
         }
     };
 
-    // Graphique ordre initial
-    const ctxOrdre = document.getElementById('chartOrdre');
-    if (ctxOrdre) {
-        new Chart(ctxOrdre.getContext('2d'), {
-            type: 'bar',
-            data: { labels: labelsOrdre, datasets: datasetsOrdre },
-            options: chartOptions
-        });
-    }
+    // Créer les graphiques pour chaque lot
+    Object.keys(lotsData).forEach(function(lotNum) {
+        const lotData = lotsData[lotNum];
 
-    // Graphique par classement
-    const ctxClassement = document.getElementById('chartClassement');
-    if (ctxClassement) {
-        new Chart(ctxClassement.getContext('2d'), {
-            type: 'bar',
-            data: { labels: labelsClassement, datasets: datasetsClassement },
-            options: chartOptions
-        });
-    }
+        // Graphique ordre initial (seulement si showOrdre = true)
+        if (lotData.showOrdre) {
+            const ctxOrdre = document.getElementById('chartOrdre_' + lotNum);
+            if (ctxOrdre) {
+                new Chart(ctxOrdre.getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: lotData.labelsOrdre, datasets: lotData.datasetsOrdre },
+                    options: chartOptions
+                });
+            }
+        }
+
+        // Graphique par classement
+        const ctxClassement = document.getElementById('chartClassement_' + lotNum);
+        if (ctxClassement) {
+            new Chart(ctxClassement.getContext('2d'), {
+                type: 'bar',
+                data: { labels: lotData.labelsClassement, datasets: lotData.datasetsClassement },
+                options: chartOptions
+            });
+        }
+    });
     </script>
     <?php endif; ?>
 </body>
