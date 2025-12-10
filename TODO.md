@@ -107,6 +107,13 @@
 - [ ] Select cumul / par periode
 - [ ] Granularite auto (minute/heure/jour)
 
+### Export/Import XLSX (Epic 7)
+- [ ] US-016 : Export scrutin en XLSX (structure multi-onglets)
+- [ ] US-017 : Import scrutin depuis XLSX (cree nouveau scrutin)
+- [ ] US-018 : Export votes en XLSX avec formules (pedagogique)
+- [ ] US-019 : Import votes (fusion offline/online, mode ajouter/remplacer)
+- [ ] Dependance : PhpSpreadsheet
+
 ### Fonctionnalites manquantes
 - [ ] Emails de notification
 - [ ] Suppression automatique anciennes images non utilisees

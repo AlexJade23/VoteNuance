@@ -411,6 +411,11 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 
 ### A venir
 - [ ] UX scrutins prives : alertes et rappels pour generer des jetons (US-015, priorite haute)
+- [ ] Export/Import XLSX scrutins et votes (US-016 a US-019, priorite moyenne)
+  - Export structure scrutin (partage de modeles)
+  - Import scrutin (creation depuis modele)
+  - Export votes avec formules Excel (pedagogique)
+  - Import votes (fusion offline/online)
 - [ ] Graphique evolution de la participation dans le temps (US-014, priorite moyenne)
 - [ ] Emails de notification (priorite basse)
 - [ ] Mode sombre (priorite basse)

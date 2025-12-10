@@ -347,6 +347,140 @@ plutot qu'une librairie PDF externe. Avantages :
 
 ---
 
+## Epic 7 : Export/Import XLSX
+
+### US-016 : Export scrutin en XLSX
+**Statut** : A faire | **Priorite** : Moyenne | **Estimation** : M
+
+**En tant que** organisateur de scrutin
+**Je veux** exporter la structure de mon scrutin en fichier Excel
+**Afin de** le partager avec d'autres utilisateurs ou le sauvegarder
+
+#### Criteres d'acceptation
+- [ ] Bouton "Exporter XLSX" sur la page du scrutin
+- [ ] Fichier Excel multi-onglets :
+  - Onglet "Scrutin" : metadonnees (titre, resume, dates, options)
+  - Onglet "Questions" : liste avec type, lot, ordre, image_url
+  - Onglet "Reponses QCM" : question (ref), libelle, ordre
+- [ ] Images exportees via URL (colonne image_url)
+- [ ] Nom fichier : scrutin_CODE_DATE.xlsx
+
+#### Taches techniques
+- [ ] Installer PhpSpreadsheet via Composer
+- [ ] Creer scrutin-export.php
+- [ ] Fonction exportScrutinToXlsx($scrutinId)
+- [ ] Generer les 3 onglets avec mise en forme
+
+#### Dependances
+- PhpSpreadsheet (composer require phpoffice/phpspreadsheet)
+
+#### Fichiers concernes
+- scrutin-export.php (nouveau)
+- scrutin-view.php (bouton export)
+- functions.php
+
+---
+
+### US-017 : Import scrutin depuis XLSX
+**Statut** : A faire | **Priorite** : Moyenne | **Estimation** : M
+
+**En tant que** utilisateur
+**Je veux** importer un scrutin depuis un fichier Excel
+**Afin de** creer un scrutin a partir d'un modele partage
+
+#### Criteres d'acceptation
+- [ ] Page d'import avec upload de fichier XLSX
+- [ ] Previsualisation avant creation
+- [ ] Creation d'un NOUVEAU scrutin (jamais d'ecrasement)
+- [ ] L'importateur devient proprietaire du nouveau scrutin
+- [ ] Images : telechargement si URL accessible, sinon ignorees
+- [ ] Validation du format (colonnes attendues presentes)
+- [ ] Limite taille fichier (ex: 5 Mo)
+
+#### Taches techniques
+- [ ] Creer scrutin-import.php
+- [ ] Fonction importScrutinFromXlsx($file, $userId)
+- [ ] Validation structure du fichier
+- [ ] Telechargement images depuis URLs
+- [ ] Lien dans navigation "Importer un scrutin"
+
+#### Fichiers concernes
+- scrutin-import.php (nouveau)
+- functions.php
+- mes-scrutins.php (lien vers import)
+
+---
+
+### US-018 : Export votes/resultats en XLSX avec formules
+**Statut** : A faire | **Priorite** : Moyenne | **Estimation** : L
+
+**En tant que** organisateur de scrutin
+**Je veux** exporter les resultats en Excel avec des formules
+**Afin de** comprendre les calculs et simuler des scenarios
+
+#### Criteres d'acceptation
+- [ ] Bouton "Exporter XLSX" sur la page resultats
+- [ ] Fichier Excel multi-onglets avec FORMULES (pas de valeurs calculees) :
+  - Onglet "Resume" : titre, dates, =SOMME() participants
+  - Onglet "Votes bruts" : Question, AC, FC, PC, SA, PP, FP, AP
+  - Onglet "Calculs" : formules Vote Nuance
+    - =AP+FP+PP+(SA/2) → Classement
+    - =AP-AC → Niveau 1 departage
+    - =FP-FC → Niveau 2 departage
+    - =PP-PC → Niveau 3 departage
+    - =(AP+FP+PP-AC-FC-PC)/Total → Taux partisans net
+  - Onglet "QCM" : question, reponse, nb, =nb/total*100
+  - Onglet "Reponses ouvertes" : question, texte
+  - Onglet "Prefere du lot" : lot, option, nb, =nb/total*100
+- [ ] Aspect pedagogique : modification des votes bruts → recalcul instantane
+
+#### Taches techniques
+- [ ] Creer votes-export.php
+- [ ] Fonction exportVotesToXlsx($scrutinId)
+- [ ] Generer formules Excel (pas de valeurs fixes)
+- [ ] Mise en forme conditionnelle (couleurs mentions)
+
+#### Fichiers concernes
+- votes-export.php (nouveau)
+- scrutin-results.php (bouton export)
+- functions.php
+
+---
+
+### US-019 : Import votes depuis XLSX (fusion offline/online)
+**Statut** : A faire | **Priorite** : Moyenne | **Estimation** : L
+
+**En tant que** organisateur de scrutin
+**Je veux** importer des votes depuis un fichier Excel
+**Afin de** fusionner des votes hors ligne avec les votes en ligne
+
+#### Criteres d'acceptation
+- [ ] Bouton "Importer votes" sur la page resultats (visible uniquement par le createur)
+- [ ] Upload fichier XLSX avec structure attendue :
+  - Question (titre exact) | AC | FC | PC | SA | PP | FP | AP
+- [ ] Option au choix de l'utilisateur :
+  - "Ajouter" : votes importes + votes existants
+  - "Remplacer" : votes importes ecrasent les existants
+- [ ] Validation bijective : bloquer si une question du fichier n'existe pas dans le scrutin
+- [ ] Tracabilite : flag `est_importe` et date d'import sur les bulletins
+- [ ] Previsualisation avant import
+
+#### Taches techniques
+- [ ] Creer votes-import.php
+- [ ] Fonction importVotesFromXlsx($file, $scrutinId, $mode)
+- [ ] Validation bijective questions fichier <-> scrutin
+- [ ] Ajouter colonne `est_importe` et `imported_at` dans table bulletins
+- [ ] Migration SQL pour nouvelles colonnes
+- [ ] Gestion mode "ajouter" vs "remplacer"
+
+#### Fichiers concernes
+- votes-import.php (nouveau)
+- scrutin-results.php (bouton import)
+- functions.php
+- database.migrations.sql
+
+---
+
 ## Epic 6 : Ameliorations UX
 
 ### US-009 : Drag & drop upload images
