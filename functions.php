@@ -1016,6 +1016,103 @@ function createStripeCheckoutSession($scrutinId, $userId, $nbJetons, $successUrl
 }
 
 // ============================================================================
+// RESULTATS ET EXPORTS
+// ============================================================================
+
+/**
+ * Recuperer les resultats agreges par question pour un scrutin (Vote Nuance)
+ * @return array [question_id => ['ac' => X, 'fc' => X, ...]]
+ */
+function getResultsByScrutin($scrutinId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT
+            question_id,
+            SUM(CASE WHEN vote_mention = 1 THEN 1 ELSE 0 END) AS ac,
+            SUM(CASE WHEN vote_mention = 2 THEN 1 ELSE 0 END) AS fc,
+            SUM(CASE WHEN vote_mention = 3 THEN 1 ELSE 0 END) AS pc,
+            SUM(CASE WHEN vote_mention = 4 THEN 1 ELSE 0 END) AS sa,
+            SUM(CASE WHEN vote_mention = 5 THEN 1 ELSE 0 END) AS pp,
+            SUM(CASE WHEN vote_mention = 6 THEN 1 ELSE 0 END) AS fp,
+            SUM(CASE WHEN vote_mention = 7 THEN 1 ELSE 0 END) AS ap
+        FROM bulletins
+        WHERE scrutin_id = ? AND est_test = 0 AND vote_mention IS NOT NULL
+        GROUP BY question_id
+    ');
+    $stmt->execute([$scrutinId]);
+    $results = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $results[$row['question_id']] = $row;
+    }
+    return $results;
+}
+
+/**
+ * Recuperer les emargements d'un scrutin
+ */
+function getEmargementsByScrutin($scrutinId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('SELECT * FROM emargements WHERE scrutin_id = ? ORDER BY emarge_at');
+    $stmt->execute([$scrutinId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Recuperer les votes QCM pour une question
+ * @return array [['reponse_id' => X, 'nb_votes' => Y], ...]
+ */
+function getVotesQcm($questionId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT
+            rp.id AS reponse_id,
+            rp.libelle,
+            COUNT(b.id) AS nb_votes
+        FROM reponses_possibles rp
+        LEFT JOIN bulletins b ON b.reponse = rp.libelle AND b.question_id = rp.question_id AND b.est_test = 0
+        WHERE rp.question_id = ?
+        GROUP BY rp.id, rp.libelle
+        ORDER BY rp.ordre
+    ');
+    $stmt->execute([$questionId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Recuperer les reponses ouvertes pour une question
+ */
+function getReponsesOuvertes($questionId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT reponse
+        FROM bulletins
+        WHERE question_id = ? AND est_test = 0 AND reponse IS NOT NULL AND reponse != ""
+        ORDER BY vote_at
+    ');
+    $stmt->execute([$questionId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Recuperer les votes "Prefere du lot" pour une question
+ * @return array [['option_titre' => X, 'nb_votes' => Y], ...]
+ */
+function getVotesPrefere($questionId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT
+            reponse AS option_titre,
+            COUNT(*) AS nb_votes
+        FROM bulletins
+        WHERE question_id = ? AND est_test = 0 AND reponse IS NOT NULL
+        GROUP BY reponse
+        ORDER BY nb_votes DESC
+    ');
+    $stmt->execute([$questionId]);
+    return $stmt->fetchAll();
+}
+
+// ============================================================================
 // STATISTIQUES PARTICIPATION
 // ============================================================================
 
