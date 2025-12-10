@@ -17,11 +17,11 @@ ALTER TABLE scrutins ADD COLUMN ordre_mentions TINYINT(1) DEFAULT 0
 -- Stocke les achats de jetons via Stripe
 
 CREATE TABLE IF NOT EXISTS achats (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    scrutin_id INT NOT NULL,
-    nb_jetons INT NOT NULL,
-    montant_cents INT NOT NULL COMMENT 'Montant en centimes (ex: 1000 = 10 EUR)',
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    scrutin_id INT UNSIGNED NOT NULL,
+    nb_jetons INT UNSIGNED NOT NULL,
+    montant_cents INT UNSIGNED NOT NULL COMMENT 'Montant en centimes (ex: 1000 = 10 EUR)',
     stripe_session_id VARCHAR(255) NULL COMMENT 'ID de la session Stripe Checkout',
     stripe_payment_intent VARCHAR(255) NULL COMMENT 'ID du PaymentIntent Stripe',
     status ENUM('pending', 'paid', 'failed', 'refunded') DEFAULT 'pending',

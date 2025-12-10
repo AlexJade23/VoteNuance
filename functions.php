@@ -1029,7 +1029,7 @@ function getParticipationTimeline($scrutinId) {
 
     // Recuperer le premier et dernier emargement
     $stmt = $pdo->prepare('
-        SELECT MIN(voted_at) as first_vote, MAX(voted_at) as last_vote, COUNT(*) as total
+        SELECT MIN(emarge_at) as first_vote, MAX(emarge_at) as last_vote, COUNT(*) as total
         FROM emargements
         WHERE scrutin_id = ?
     ');
@@ -1070,7 +1070,7 @@ function getParticipationTimeline($scrutinId) {
 
     // Agreger les emargements par periode
     $stmt = $pdo->prepare("
-        SELECT DATE_FORMAT(voted_at, ?) as period, COUNT(*) as count
+        SELECT DATE_FORMAT(emarge_at, ?) as period, COUNT(*) as count
         FROM emargements
         WHERE scrutin_id = ?
         GROUP BY period
