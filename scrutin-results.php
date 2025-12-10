@@ -375,6 +375,7 @@ if ($isOwner && $nbParticipants > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resultats - <?php echo htmlspecialchars($scrutin['titre']); ?></title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -844,6 +845,16 @@ if ($isOwner && $nbParticipants > 0) {
     const participationData = <?php echo json_encode($participationTimeline); ?>;
     let participationChart = null;
 
+    // Determiner l'unite de temps selon la granularite
+    function getTimeUnit() {
+        switch (participationData.granularity) {
+            case 'minute': return 'minute';
+            case 'hour': return 'hour';
+            case 'day': return 'day';
+            default: return 'hour';
+        }
+    }
+
     function createParticipationChart() {
         const ctx = document.getElementById('participationChart');
         if (!ctx) return;
@@ -864,7 +875,6 @@ if ($isOwner && $nbParticipants > 0) {
         participationChart = new Chart(ctx.getContext('2d'), {
             type: chartType,
             data: {
-                labels: participationData.labels,
                 datasets: [{
                     label: label,
                     data: data,
@@ -873,8 +883,8 @@ if ($isOwner && $nbParticipants > 0) {
                     borderWidth: 2,
                     fill: isCumulative,
                     tension: 0.3,
-                    pointRadius: isCumulative ? 3 : 0,
-                    pointHoverRadius: 5
+                    pointRadius: isCumulative ? 4 : 0,
+                    pointHoverRadius: 6
                 }]
             },
             options: {
@@ -884,6 +894,14 @@ if ($isOwner && $nbParticipants > 0) {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
+                            title: function(context) {
+                                const date = new Date(context[0].parsed.x);
+                                if (participationData.granularity === 'day') {
+                                    return date.toLocaleDateString('fr-FR');
+                                } else {
+                                    return date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+                                }
+                            },
                             label: function(context) {
                                 return context.parsed.y + ' participant' + (context.parsed.y > 1 ? 's' : '');
                             }
@@ -892,7 +910,21 @@ if ($isOwner && $nbParticipants > 0) {
                 },
                 scales: {
                     x: {
-                        grid: { display: false }
+                        type: 'time',
+                        time: {
+                            unit: getTimeUnit(),
+                            displayFormats: {
+                                minute: 'HH:mm',
+                                hour: 'dd/MM HH\'h\'',
+                                day: 'dd/MM'
+                            },
+                            tooltipFormat: 'dd/MM/yyyy HH:mm'
+                        },
+                        grid: { display: false },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 0
+                        }
                     },
                     y: {
                         beginAtZero: true,

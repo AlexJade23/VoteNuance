@@ -1137,7 +1137,6 @@ function getParticipationTimeline($scrutinId) {
         return [
             'data' => [],
             'cumulative' => [],
-            'labels' => [],
             'granularity' => 'hour',
             'total' => 0
         ];
@@ -1150,19 +1149,13 @@ function getParticipationTimeline($scrutinId) {
     // Determiner la granularite
     if ($duration < 86400) { // < 1 jour
         $granularity = 'minute';
-        $sqlFormat = '%Y-%m-%d %H:%i';
-        $phpFormat = 'H:i';
-        $interval = 60; // 1 minute
+        $sqlFormat = '%Y-%m-%d %H:%i:00';
     } elseif ($duration < 7 * 86400) { // 1-7 jours
         $granularity = 'hour';
-        $sqlFormat = '%Y-%m-%d %H:00';
-        $phpFormat = 'd/m H\\h';
-        $interval = 3600; // 1 heure
+        $sqlFormat = '%Y-%m-%d %H:00:00';
     } else { // > 7 jours
         $granularity = 'day';
-        $sqlFormat = '%Y-%m-%d';
-        $phpFormat = 'd/m';
-        $interval = 86400; // 1 jour
+        $sqlFormat = '%Y-%m-%d 00:00:00';
     }
 
     // Agreger les emargements par periode
@@ -1176,23 +1169,23 @@ function getParticipationTimeline($scrutinId) {
     $stmt->execute([$sqlFormat, $scrutinId]);
     $rows = $stmt->fetchAll();
 
-    // Construire les donnees
+    // Construire les donnees avec timestamps pour echelle de temps proportionnelle
     $data = [];
-    $labels = [];
     $cumulative = [];
     $cumulativeTotal = 0;
 
     foreach ($rows as $row) {
-        $labels[] = date($phpFormat, strtotime($row['period']));
-        $data[] = (int)$row['count'];
-        $cumulativeTotal += (int)$row['count'];
-        $cumulative[] = $cumulativeTotal;
+        $timestamp = strtotime($row['period']) * 1000; // milliseconds pour JS
+        $count = (int)$row['count'];
+        $cumulativeTotal += $count;
+
+        $data[] = ['x' => $timestamp, 'y' => $count];
+        $cumulative[] = ['x' => $timestamp, 'y' => $cumulativeTotal];
     }
 
     return [
         'data' => $data,
         'cumulative' => $cumulative,
-        'labels' => $labels,
         'granularity' => $granularity,
         'total' => (int)$range['total']
     ];
