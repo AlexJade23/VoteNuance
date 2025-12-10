@@ -121,7 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                header('Location: /' . urlencode($code) . '/v/?created=1');
+                $redirectParam = $est_public ? 'created=1' : 'created=private';
+                header('Location: /' . urlencode($code) . '/v/?' . $redirectParam);
                 exit;
 
             } catch (Exception $e) {
@@ -534,6 +535,24 @@ $csrfToken = generateCsrfToken();
             width: 0;
             transition: width 0.3s;
         }
+
+        .info-tooltip {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 18px;
+            font-size: 12px;
+            cursor: help;
+            margin-left: 5px;
+        }
+
+        .info-tooltip:hover {
+            background: #5a6fd6;
+        }
     </style>
 </head>
 <body>
@@ -652,6 +671,7 @@ $csrfToken = generateCsrfToken();
                         <input type="checkbox" name="est_public" value="1"
                                <?php echo isset($_POST['est_public']) ? 'checked' : ''; ?>>
                         Scrutin public (visible par tous)
+                        <span class="info-tooltip" title="Un scrutin prive necessite des jetons d'invitation. Vous pourrez les generer apres la creation du scrutin.">&#9432;</span>
                     </label>
                 </div>
 

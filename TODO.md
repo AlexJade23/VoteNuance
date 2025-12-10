@@ -96,11 +96,11 @@
 - [x] Page de succes apres paiement
 - [x] Table `achats` pour historique
 
-### UX scrutins prives (US-015)
-- [ ] Info-bulle sur option "Scrutin prive" (creation)
-- [ ] Message de rappel apres creation scrutin prive
-- [ ] Alerte sur page scrutin si prive et 0 jetons
-- [ ] Badge dans liste scrutins si prive sans jetons
+### UX scrutins prives (US-015) - DONE
+- [x] Info-bulle sur option "Scrutin prive" (creation)
+- [x] Message de rappel apres creation scrutin prive
+- [x] Alerte sur page scrutin si prive et 0 jetons
+- [x] Badge dans liste scrutins si prive sans jetons
 
 ### Graphique participation (US-014)
 - [ ] Graphique evolution emargements dans le temps

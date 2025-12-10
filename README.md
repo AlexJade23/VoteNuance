@@ -408,9 +408,9 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - [x] Resultats groupes par lot
 - [x] Conservation des questions saisies en cas d'erreur
 - [x] Paiement Stripe pour les jetons (1 EUR/jeton)
+- [x] UX scrutins prives : alertes et rappels pour generer des jetons (US-015)
 
 ### A venir
-- [ ] UX scrutins prives : alertes et rappels pour generer des jetons (US-015, priorite haute)
 - [ ] Export/Import XLSX scrutins et votes (US-016 a US-019, priorite moyenne)
   - Export structure scrutin (partage de modeles)
   - Import scrutin (creation depuis modele)

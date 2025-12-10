@@ -16,6 +16,14 @@ if (!$user) {
 $allScrutins = getScrutinsByOwner($user['id']);
 $csrfToken = generateCsrfToken();
 
+// Recuperer les stats de jetons pour les scrutins prives
+$tokenStatsByScrutin = [];
+foreach ($allScrutins as $s) {
+    if (!$s['est_public']) {
+        $tokenStatsByScrutin[$s['id']] = getTokenStats($s['id']);
+    }
+}
+
 // Afficher les archives ?
 $showArchives = isset($_GET['archives']);
 
@@ -414,6 +422,29 @@ function getScrutinStatus($scrutin) {
             background: #dc3545;
             color: white;
         }
+
+        .badge-warning {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffc107;
+            margin-left: 8px;
+        }
+
+        .badge-private {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #e9ecef;
+            color: #495057;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
@@ -472,6 +503,9 @@ function getScrutinStatus($scrutin) {
             <?php foreach ($scrutins as $scrutin):
                 $status = getScrutinStatus($scrutin);
                 $hasVotes = ($scrutin['nb_votes'] ?? 0) > 0;
+                $isPrivate = !$scrutin['est_public'];
+                $tokenStats = $isPrivate ? ($tokenStatsByScrutin[$scrutin['id']] ?? null) : null;
+                $noTokensAvailable = $tokenStats && $tokenStats['disponibles'] === 0;
             ?>
             <div class="scrutin-card">
                 <div class="scrutin-main">
@@ -480,6 +514,12 @@ function getScrutinStatus($scrutin) {
                             <a href="/<?php echo urlencode($scrutin['code']); ?>/v/">
                                 <?php echo htmlspecialchars($scrutin['titre']); ?>
                             </a>
+                            <?php if ($isPrivate): ?>
+                            <span class="badge-private">Prive</span>
+                            <?php endif; ?>
+                            <?php if ($isPrivate && $noTokensAvailable): ?>
+                            <span class="badge-warning" title="Aucun jeton disponible, personne ne peut voter">Aucun jeton</span>
+                            <?php endif; ?>
                         </h3>
                         <span class="status <?php echo $status['class']; ?>"><?php echo $status['label']; ?></span>
                     </div>

@@ -228,6 +228,12 @@ $typeLabels = [
             border: 1px solid #c3e6cb;
         }
 
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffc107;
+        }
+
         .alert-info {
             background: #e7f3ff;
             color: #0c5460;
@@ -609,12 +615,24 @@ $typeLabels = [
         <a href="/mes-scrutins.php" class="back-link">← Retour à mes scrutins</a>
         <?php endif; ?>
 
-        <?php if (isset($_GET['created'])): ?>
+        <?php if (isset($_GET['created']) && $_GET['created'] === 'private'): ?>
+        <div class="alert alert-success">
+            <strong>Votre scrutin prive a ete cree avec succes !</strong><br>
+            Pensez a generer des jetons pour permettre aux participants de voter.
+        </div>
+        <?php elseif (isset($_GET['created'])): ?>
         <div class="alert alert-success">Votre scrutin a ete cree avec succes !</div>
         <?php endif; ?>
 
         <?php if (isset($_GET['error']) && $_GET['error'] === 'votes_exist'): ?>
         <div class="alert alert-info">Impossible de modifier ce scrutin : des votes ont deja ete enregistres.</div>
+        <?php endif; ?>
+
+        <?php if ($isOwner && !$scrutin['est_public'] && $tokenStats && $tokenStats['disponibles'] === 0 && !isset($_GET['created'])): ?>
+        <div class="alert alert-warning">
+            <strong>Attention :</strong> Ce scrutin est prive mais aucun jeton n'est disponible.<br>
+            Sans jetons, personne ne pourra voter. <a href="#jetons-section" style="color: #856404; font-weight: bold;">Achetez des jetons</a> pour permettre la participation.
+        </div>
         <?php endif; ?>
 
         <div class="header">
@@ -735,7 +753,7 @@ $typeLabels = [
 
         <?php if ($isOwner && !$scrutin['est_public']): ?>
         <!-- Section gestion des jetons pour scrutins privés -->
-        <div class="card">
+        <div class="card" id="jetons-section">
             <h2>Jetons d'invitation</h2>
 
             <?php if ($tokenMessage): ?>

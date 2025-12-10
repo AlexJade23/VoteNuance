@@ -289,23 +289,23 @@ plutot qu'une librairie PDF externe. Avantages :
 ---
 
 ### US-015 : Amelioration UX scrutins prives sans jetons
-**Statut** : A faire | **Priorite** : Haute | **Estimation** : S
+**Statut** : Done | **Priorite** : Haute | **Estimation** : S
 
 **En tant que** organisateur de scrutin prive
 **Je veux** etre clairement informe que je dois generer des jetons pour permettre le vote
 **Afin de** ne pas oublier cette etape indispensable
 
 #### Criteres d'acceptation
-- [ ] Info-bulle explicative a cote de l'option "Scrutin prive" dans le formulaire de creation
-- [ ] Message de rappel apres la creation d'un scrutin prive (redirection vers page scrutin)
-- [ ] Alerte visible sur la page du scrutin si prive et 0 jetons disponibles
-- [ ] Badge d'avertissement dans la liste "Mes scrutins" pour les scrutins prives sans jetons
+- [x] Info-bulle explicative a cote de l'option "Scrutin prive" dans le formulaire de creation
+- [x] Message de rappel apres la creation d'un scrutin prive (redirection vers page scrutin)
+- [x] Alerte visible sur la page du scrutin si prive et 0 jetons disponibles
+- [x] Badge d'avertissement dans la liste "Mes scrutins" pour les scrutins prives sans jetons
 
 #### Taches techniques
-- [ ] scrutin-create.php : ajouter info-bulle sur le champ "est_public"
-- [ ] scrutin-create.php : rediriger vers scrutin-view.php avec parametre ?created=private
-- [ ] scrutin-view.php : afficher alerte si est_public=0 et jetons disponibles=0
-- [ ] mes-scrutins.php : afficher badge "[Aucun jeton]" si scrutin prive sans jetons
+- [x] scrutin-create.php : ajouter info-bulle sur le champ "est_public"
+- [x] scrutin-create.php : rediriger vers scrutin-view.php avec parametre ?created=private
+- [x] scrutin-view.php : afficher alerte si est_public=0 et jetons disponibles=0
+- [x] mes-scrutins.php : afficher badge "[Aucun jeton]" si scrutin prive sans jetons
 
 #### Fichiers concernes
 - scrutin-create.php
