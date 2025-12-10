@@ -27,6 +27,12 @@ if (!defined('MICROSOFT_CLIENT_SECRET')) define('MICROSOFT_CLIENT_SECRET', 'VOTR
 if (!defined('MICROSOFT_REDIRECT_URI')) define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
 if (!defined('MICROSOFT_TENANT')) define('MICROSOFT_TENANT', 'common'); // 'common' pour comptes personnels et professionnels
 
+// Configuration Stripe (valeurs par défaut si secrets non chargés)
+if (!defined('STRIPE_PUBLIC_KEY')) define('STRIPE_PUBLIC_KEY', 'pk_test_VOTRE_CLE_PUBLIQUE');
+if (!defined('STRIPE_SECRET_KEY')) define('STRIPE_SECRET_KEY', 'sk_test_VOTRE_CLE_SECRETE');
+if (!defined('STRIPE_WEBHOOK_SECRET')) define('STRIPE_WEBHOOK_SECRET', 'whsec_VOTRE_SECRET_WEBHOOK');
+if (!defined('STRIPE_PRICE_PER_TOKEN_CENTS')) define('STRIPE_PRICE_PER_TOKEN_CENTS', 100); // 1 EUR = 100 centimes par jeton
+
 // URLs OAuth
 define('GOOGLE_AUTH_URL', 'https://accounts.google.com/o/oauth2/v2/auth');
 define('GOOGLE_TOKEN_URL', 'https://oauth2.googleapis.com/token');

@@ -832,3 +832,227 @@ function revokeToken($tokenId, $scrutinId) {
     $stmt->execute([$tokenId, $scrutinId]);
     return $stmt->rowCount() > 0;
 }
+
+// ============================================================================
+// ACHATS STRIPE (paiement des jetons)
+// ============================================================================
+
+/**
+ * Verifier si Stripe est correctement configure
+ * @return bool
+ */
+function isStripeConfigured() {
+    // Verifier que les cles ne sont pas les valeurs par defaut
+    if (!defined('STRIPE_SECRET_KEY') || strpos(STRIPE_SECRET_KEY, 'VOTRE_CLE') !== false) {
+        return false;
+    }
+    if (!defined('STRIPE_PUBLIC_KEY') || strpos(STRIPE_PUBLIC_KEY, 'VOTRE_CLE') !== false) {
+        return false;
+    }
+    if (!defined('STRIPE_WEBHOOK_SECRET') || strpos(STRIPE_WEBHOOK_SECRET, 'VOTRE_SECRET') !== false) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Creer un achat en attente de paiement
+ * @return int ID de l'achat cree
+ */
+function createAchat($userId, $scrutinId, $nbJetons, $montantCents, $stripeSessionId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        INSERT INTO achats (user_id, scrutin_id, nb_jetons, montant_cents, stripe_session_id, status)
+        VALUES (?, ?, ?, ?, ?, "pending")
+    ');
+    $stmt->execute([$userId, $scrutinId, $nbJetons, $montantCents, $stripeSessionId]);
+    return $pdo->lastInsertId();
+}
+
+/**
+ * Recuperer un achat par son ID de session Stripe
+ */
+function getAchatByStripeSession($stripeSessionId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('SELECT * FROM achats WHERE stripe_session_id = ?');
+    $stmt->execute([$stripeSessionId]);
+    return $stmt->fetch();
+}
+
+/**
+ * Recuperer un achat par son ID
+ */
+function getAchatById($achatId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('SELECT * FROM achats WHERE id = ?');
+    $stmt->execute([$achatId]);
+    return $stmt->fetch();
+}
+
+/**
+ * Marquer un achat comme paye et generer les jetons
+ * @return array Liste des jetons generes
+ */
+function markAchatAsPaid($achatId, $stripePaymentIntent = null) {
+    $pdo = getDbConnection();
+
+    // Recuperer l'achat
+    $achat = getAchatById($achatId);
+    if (!$achat || $achat['status'] !== 'pending') {
+        return false;
+    }
+
+    // Mettre a jour le statut
+    $stmt = $pdo->prepare('
+        UPDATE achats
+        SET status = "paid", paid_at = NOW(), stripe_payment_intent = ?
+        WHERE id = ? AND status = "pending"
+    ');
+    $stmt->execute([$stripePaymentIntent, $achatId]);
+
+    if ($stmt->rowCount() === 0) {
+        return false;
+    }
+
+    // Generer les jetons
+    $tokens = generateTokens($achat['scrutin_id'], $achat['nb_jetons']);
+
+    return $tokens;
+}
+
+/**
+ * Marquer un achat comme echoue
+ */
+function markAchatAsFailed($achatId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('UPDATE achats SET status = "failed" WHERE id = ?');
+    $stmt->execute([$achatId]);
+}
+
+/**
+ * Recuperer l'historique des achats d'un utilisateur pour un scrutin
+ */
+function getAchatsByUserAndScrutin($userId, $scrutinId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('
+        SELECT * FROM achats
+        WHERE user_id = ? AND scrutin_id = ?
+        ORDER BY created_at DESC
+    ');
+    $stmt->execute([$userId, $scrutinId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Calculer le prix total en centimes
+ */
+function calculateTotalPrice($nbJetons) {
+    return $nbJetons * STRIPE_PRICE_PER_TOKEN_CENTS;
+}
+
+/**
+ * Creer une session Stripe Checkout
+ * @return array|false Retourne les infos de session ou false en cas d'erreur
+ */
+function createStripeCheckoutSession($scrutinId, $userId, $nbJetons, $successUrl, $cancelUrl) {
+    $montantCents = calculateTotalPrice($nbJetons);
+
+    // Recuperer le scrutin pour le nom
+    $scrutin = getScrutinById($scrutinId);
+    if (!$scrutin) {
+        return false;
+    }
+
+    // Appel API Stripe
+    $ch = curl_init('https://api.stripe.com/v1/checkout/sessions');
+
+    $data = [
+        'payment_method_types[]' => 'card',
+        'line_items[0][price_data][currency]' => 'eur',
+        'line_items[0][price_data][product_data][name]' => 'Jetons de vote - ' . $scrutin['titre'],
+        'line_items[0][price_data][product_data][description]' => $nbJetons . ' jeton(s) pour le scrutin "' . $scrutin['titre'] . '"',
+        'line_items[0][price_data][unit_amount]' => STRIPE_PRICE_PER_TOKEN_CENTS,
+        'line_items[0][quantity]' => $nbJetons,
+        'mode' => 'payment',
+        'success_url' => $successUrl,
+        'cancel_url' => $cancelUrl,
+        'metadata[scrutin_id]' => $scrutinId,
+        'metadata[user_id]' => $userId,
+        'metadata[nb_jetons]' => $nbJetons
+    ];
+
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_USERPWD, STRIPE_SECRET_KEY . ':');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/x-www-form-urlencoded'
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode !== 200) {
+        error_log('Stripe Checkout error: ' . $response);
+        return false;
+    }
+
+    $session = json_decode($response, true);
+
+    if (!isset($session['id']) || !isset($session['url'])) {
+        error_log('Stripe Checkout invalid response: ' . $response);
+        return false;
+    }
+
+    // Creer l'achat en base
+    $achatId = createAchat($userId, $scrutinId, $nbJetons, $montantCents, $session['id']);
+
+    return [
+        'session_id' => $session['id'],
+        'checkout_url' => $session['url'],
+        'achat_id' => $achatId
+    ];
+}
+
+/**
+ * Verifier la signature d'un webhook Stripe
+ */
+function verifyStripeWebhookSignature($payload, $sigHeader) {
+    $elements = explode(',', $sigHeader);
+    $timestamp = null;
+    $signatures = [];
+
+    foreach ($elements as $element) {
+        $parts = explode('=', $element, 2);
+        if (count($parts) === 2) {
+            if ($parts[0] === 't') {
+                $timestamp = $parts[1];
+            } elseif ($parts[0] === 'v1') {
+                $signatures[] = $parts[1];
+            }
+        }
+    }
+
+    if (!$timestamp || empty($signatures)) {
+        return false;
+    }
+
+    // Verifier que le timestamp n'est pas trop vieux (5 minutes)
+    if (abs(time() - intval($timestamp)) > 300) {
+        return false;
+    }
+
+    // Calculer la signature attendue
+    $signedPayload = $timestamp . '.' . $payload;
+    $expectedSignature = hash_hmac('sha256', $signedPayload, STRIPE_WEBHOOK_SECRET);
+
+    // Verifier contre toutes les signatures v1
+    foreach ($signatures as $sig) {
+        if (hash_equals($expectedSignature, $sig)) {
+            return true;
+        }
+    }
+
+    return false;
+}

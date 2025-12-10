@@ -186,28 +186,28 @@ plutot qu'une librairie PDF externe. Avantages :
 ## Epic 4 : Monetisation
 
 ### US-013 : Paiement Stripe pour les jetons
-**Statut** : A faire | **Priorite** : Haute | **Estimation** : L
+**Statut** : Done | **Priorite** : Haute | **Estimation** : L
 
 **En tant que** organisateur de scrutin prive
 **Je veux** acheter des jetons de vote via Stripe
 **Afin de** financer le service et obtenir mes jetons instantanement
 
 #### Criteres d'acceptation
-- [ ] Panier affichant le nombre de jetons et le prix (1EUR/jeton)
-- [ ] Integration Stripe Checkout pour le paiement
-- [ ] Confirmation de paiement avant generation des jetons
-- [ ] Historique des achats par utilisateur
-- [ ] Gestion des erreurs de paiement
+- [x] Panier affichant le nombre de jetons et le prix (1EUR/jeton)
+- [x] Integration Stripe Checkout pour le paiement
+- [x] Confirmation de paiement avant generation des jetons
+- [x] Historique des achats par utilisateur
+- [x] Gestion des erreurs de paiement
 
 #### Taches techniques
-- [ ] Creer compte Stripe et obtenir cles API (test puis production)
-- [ ] Configurer webhook Stripe pour confirmation paiement
-- [ ] Ajouter table `achats` en base (user_id, scrutin_id, nb_jetons, montant, stripe_session_id, status, created_at)
-- [ ] Modifier scrutin-view.php : panier avant generation
-- [ ] Creer stripe-checkout.php : creation session Stripe
-- [ ] Creer stripe-webhook.php : reception confirmation paiement
-- [ ] Creer stripe-success.php : page de succes post-paiement
-- [ ] Generer les jetons uniquement apres confirmation webhook
+- [x] Creer compte Stripe et obtenir cles API (test puis production)
+- [x] Configurer webhook Stripe pour confirmation paiement
+- [x] Ajouter table `achats` en base (user_id, scrutin_id, nb_jetons, montant, stripe_session_id, status, created_at)
+- [x] Modifier scrutin-view.php : panier avant generation
+- [x] Creer stripe-checkout.php : creation session Stripe
+- [x] Creer stripe-webhook.php : reception confirmation paiement
+- [x] Creer stripe-success.php : page de succes post-paiement
+- [x] Generer les jetons uniquement apres confirmation webhook
 
 #### Dependances
 - Cles API Stripe (pk_test_*, sk_test_* puis pk_live_*, sk_live_*)

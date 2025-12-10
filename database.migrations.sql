@@ -12,5 +12,28 @@ ALTER TABLE scrutins ADD COLUMN ordre_mentions TINYINT(1) DEFAULT 0
     COMMENT '0=Contre vers Pour, 1=Pour vers Contre';
 
 -- ============================================================================
+-- Migration 002 - 2024-12-10 - Table achats pour paiements Stripe
+-- ============================================================================
+-- Stocke les achats de jetons via Stripe
+
+CREATE TABLE IF NOT EXISTS achats (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    scrutin_id INT NOT NULL,
+    nb_jetons INT NOT NULL,
+    montant_cents INT NOT NULL COMMENT 'Montant en centimes (ex: 1000 = 10 EUR)',
+    stripe_session_id VARCHAR(255) NULL COMMENT 'ID de la session Stripe Checkout',
+    stripe_payment_intent VARCHAR(255) NULL COMMENT 'ID du PaymentIntent Stripe',
+    status ENUM('pending', 'paid', 'failed', 'refunded') DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    paid_at DATETIME NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (scrutin_id) REFERENCES scrutins(id) ON DELETE CASCADE,
+    INDEX idx_stripe_session (stripe_session_id),
+    INDEX idx_user_scrutin (user_id, scrutin_id),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
 -- FIN DES MIGRATIONS
 -- ============================================================================

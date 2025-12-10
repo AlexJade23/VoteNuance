@@ -43,13 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner) {
     } else {
         $action = $_POST['token_action'] ?? '';
 
-        if ($action === 'generate') {
-            $count = intval($_POST['token_count'] ?? 1);
-            $count = max(1, min(500, $count)); // Entre 1 et 500
-            $newTokens = generateTokens($scrutin['id'], $count);
-            $tokenMessage = $count . ' jeton(s) genere(s) avec succes.';
-            $_SESSION['generated_tokens'] = $newTokens;
-        } elseif ($action === 'revoke') {
+        if ($action === 'revoke') {
             $tokenId = intval($_POST['token_id'] ?? 0);
             if ($tokenId && revokeToken($tokenId, $scrutin['id'])) {
                 $tokenMessage = 'Jeton revoque avec succes.';
@@ -585,6 +579,28 @@ $typeLabels = [
             color: #666;
             word-break: break-all;
         }
+
+        .price-display {
+            font-weight: bold;
+            color: #28a745;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .purchase-info {
+            background: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #2e7d32;
+        }
     </style>
 </head>
 <body>
@@ -746,46 +762,35 @@ $typeLabels = [
                     </div>
                 </div>
 
-                <form method="POST" class="generate-form">
+<?php if (isStripeConfigured()): ?>
+                <form method="POST" action="/stripe-checkout.php" class="generate-form" id="purchase-form">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
-                    <input type="hidden" name="token_action" value="generate">
-                    <label>Generer</label>
-                    <input type="number" name="token_count" value="10" min="1" max="500">
-                    <button type="submit" class="btn btn-primary">jetons</button>
+                    <input type="hidden" name="scrutin_id" value="<?php echo $scrutin['id']; ?>">
+                    <label>Acheter</label>
+                    <input type="number" name="nb_jetons" id="nb_jetons" value="10" min="1" max="500" onchange="updatePrice()">
+                    <span class="price-display" id="price-display"><?php echo number_format(10 * STRIPE_PRICE_PER_TOKEN_CENTS / 100, 2, ',', ' '); ?> EUR</span>
+                    <button type="submit" class="btn btn-success">Payer</button>
                 </form>
-            </div>
-
-            <?php
-            // Afficher les jetons nouvellement générés
-            $generatedTokens = $_SESSION['generated_tokens'] ?? null;
-            if ($generatedTokens):
-                unset($_SESSION['generated_tokens']);
-                $baseUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/' . $scrutin['code'] . '?jeton=';
-            ?>
-            <div class="generated-tokens">
-                <h3>Jetons generes</h3>
-                <div class="tokens-list">
-                    <?php foreach ($generatedTokens as $token): ?>
-                    <div class="token-item">
-                        <?php echo htmlspecialchars($token); ?>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <button class="btn btn-secondary copy-all-btn" onclick="copyAllTokens()">Copier tous les liens</button>
-                <button class="btn btn-primary copy-all-btn" onclick="exportTokensCsv()">Exporter CSV</button>
-
-                <textarea id="all-tokens-urls" style="position: absolute; left: -9999px;"><?php
-                    foreach ($generatedTokens as $token) {
-                        echo $baseUrl . $token . "\n";
-                    }
-                ?></textarea>
-
                 <script>
-                var generatedTokens = <?php echo json_encode($generatedTokens); ?>;
-                var baseUrl = <?php echo json_encode($baseUrl); ?>;
+                function updatePrice() {
+                    var nb = parseInt(document.getElementById('nb_jetons').value) || 0;
+                    var pricePerToken = <?php echo STRIPE_PRICE_PER_TOKEN_CENTS; ?> / 100;
+                    var total = (nb * pricePerToken).toFixed(2).replace('.', ',');
+                    document.getElementById('price-display').textContent = total + ' EUR';
+                }
                 </script>
+<?php endif; ?>
             </div>
-            <?php endif; ?>
+
+<?php if (isStripeConfigured()): ?>
+            <div class="purchase-info">
+                Prix : <?php echo number_format(STRIPE_PRICE_PER_TOKEN_CENTS / 100, 2, ',', ' '); ?> EUR par jeton. Paiement securise par Stripe.
+            </div>
+<?php else: ?>
+            <div class="alert alert-warning" style="margin-top: 15px;">
+                Le systeme de paiement n'est pas encore configure. Contactez l'administrateur pour activer l'achat de jetons.
+            </div>
+<?php endif; ?>
 
             <?php if (empty($tokens)): ?>
             <div class="no-tokens">
@@ -873,41 +878,6 @@ $typeLabels = [
         input.select();
         document.execCommand('copy');
         alert('Lien copie !');
-    }
-
-    function copyAllTokens() {
-        const textarea = document.getElementById('all-tokens-urls');
-        if (textarea) {
-            textarea.style.position = 'fixed';
-            textarea.style.left = '0';
-            textarea.select();
-            document.execCommand('copy');
-            textarea.style.position = 'absolute';
-            textarea.style.left = '-9999px';
-            alert('Tous les liens ont ete copies !');
-        }
-    }
-
-    function exportTokensCsv() {
-        if (typeof generatedTokens === 'undefined' || typeof baseUrl === 'undefined') {
-            alert('Aucun jeton a exporter');
-            return;
-        }
-
-        var csv = 'Jeton,Lien,Statut\n';
-        generatedTokens.forEach(function(token) {
-            csv += token + ',' + baseUrl + token + ',Disponible\n';
-        });
-
-        var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-        var link = document.createElement('a');
-        var url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'jetons_<?php echo $scrutin['code']; ?>.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     }
 
     // Export CSV de tous les jetons (avec statut)

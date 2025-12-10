@@ -115,6 +115,10 @@ VoteNuance/
 ├── upload.php              # Endpoint upload images
 ├── uploads/                # Dossier images uploadees
 │
+├── stripe-checkout.php     # Creation session paiement Stripe
+├── stripe-webhook.php      # Reception webhooks Stripe
+├── stripe-success.php      # Page confirmation paiement
+│
 ├── BACKLOG.md              # Backlog Agile avec User Stories
 ├── TODO.md                 # Liste des taches
 └── README.md               # Ce fichier
@@ -145,18 +149,27 @@ Creer un fichier `../secret/sso.php` (hors racine web) :
 
 ```php
 <?php
+// Base de donnees
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'deco');
 define('DB_USER', 'votre_user');
 define('DB_PASS', 'votre_password');
 
+// Google OAuth
 define('GOOGLE_CLIENT_ID', 'xxx.apps.googleusercontent.com');
 define('GOOGLE_CLIENT_SECRET', 'xxx');
 define('GOOGLE_REDIRECT_URI', 'https://votresite.com/callback.php');
 
+// Microsoft OAuth
 define('MICROSOFT_CLIENT_ID', 'xxx');
 define('MICROSOFT_CLIENT_SECRET', 'xxx');
 define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
+
+// Stripe (paiement des jetons)
+define('STRIPE_PUBLIC_KEY', 'pk_live_xxx');           // Cle publique Stripe
+define('STRIPE_SECRET_KEY', 'sk_live_xxx');           // Cle secrete Stripe
+define('STRIPE_WEBHOOK_SECRET', 'whsec_xxx');         // Secret du webhook
+define('STRIPE_PRICE_PER_TOKEN_CENTS', 100);          // Prix par jeton en centimes (100 = 1 EUR)
 ```
 
 ### 3. Configuration OAuth
@@ -169,7 +182,74 @@ define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
 - Azure AD > App registrations > New registration
 - URI de redirection : `https://votresite.com/callback.php`
 
-### 4. Permissions dossier uploads
+### 4. Configuration Stripe (paiement des jetons)
+
+**Stripe Dashboard** : [https://dashboard.stripe.com](https://dashboard.stripe.com)
+
+#### Etape 1 : Obtenir les cles API
+
+1. Aller dans **Developers > API keys**
+2. Copier les cles :
+   - **Publishable key** (pk_test_... ou pk_live_...) → `STRIPE_PUBLIC_KEY`
+   - **Secret key** (sk_test_... ou sk_live_...) → `STRIPE_SECRET_KEY`
+
+> **Important** : Utilisez les cles `pk_test_` et `sk_test_` pour le developpement, puis les cles `pk_live_` et `sk_live_` en production.
+
+#### Etape 2 : Configurer le webhook
+
+1. Aller dans **Developers > Webhooks**
+2. Cliquer sur **Add endpoint**
+3. Configurer :
+   - **Endpoint URL** : `https://votresite.com/stripe-webhook.php`
+   - **Events to send** :
+     - `checkout.session.completed`
+     - `checkout.session.expired`
+4. Apres creation, cliquer sur le webhook puis **Reveal** pour obtenir le **Signing secret** (whsec_...) → `STRIPE_WEBHOOK_SECRET`
+
+#### Etape 3 : Tester le webhook (optionnel)
+
+Installer Stripe CLI pour tester localement :
+
+```bash
+# Installer Stripe CLI
+brew install stripe/stripe-cli/stripe  # macOS
+# ou telecharger depuis https://stripe.com/docs/stripe-cli
+
+# Se connecter
+stripe login
+
+# Ecouter les evenements et les rediriger vers votre serveur local
+stripe listen --forward-to localhost:8000/stripe-webhook.php
+```
+
+#### Variables Stripe
+
+| Variable | Description | Exemple |
+|----------|-------------|---------|
+| `STRIPE_PUBLIC_KEY` | Cle publique (visible cote client) | `pk_live_51...` |
+| `STRIPE_SECRET_KEY` | Cle secrete (cote serveur uniquement) | `sk_live_51...` |
+| `STRIPE_WEBHOOK_SECRET` | Secret de signature des webhooks | `whsec_...` |
+| `STRIPE_PRICE_PER_TOKEN_CENTS` | Prix par jeton en centimes | `100` (= 1 EUR) |
+
+#### Flux de paiement
+
+```
+1. Organisateur clique "Payer" (scrutin-view.php)
+       ↓
+2. Creation session Stripe (stripe-checkout.php)
+       ↓
+3. Redirection vers Stripe Checkout
+       ↓
+4. Paiement par l'utilisateur
+       ↓
+5. Webhook Stripe → stripe-webhook.php
+       ↓
+6. Generation automatique des jetons
+       ↓
+7. Redirection vers stripe-success.php
+```
+
+### 5. Permissions dossier uploads
 
 ```bash
 mkdir uploads
@@ -327,9 +407,9 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - [x] Melange aleatoire des questions par lot (anti-biais d'ordre)
 - [x] Resultats groupes par lot
 - [x] Conservation des questions saisies en cas d'erreur
+- [x] Paiement Stripe pour les jetons (1 EUR/jeton)
 
 ### A venir
-- [ ] Paiement Stripe pour les jetons (priorite haute)
 - [ ] Emails de notification (priorite basse)
 - [ ] Mode sombre (priorite basse)
 
@@ -338,7 +418,7 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 Voir [BACKLOG.md](BACKLOG.md) pour le backlog Agile complet avec User Stories.
 
 ### Prochaine priorite
-- **US-013** : Paiement Stripe pour les jetons (1EUR/jeton)
+- **US-007** : Emails de notification (priorite basse)
 
 ## Deploiement
 

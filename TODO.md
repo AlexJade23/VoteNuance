@@ -90,6 +90,12 @@
   - Fichier : scrutin-results.php (fonction sortByClassement)
   - Corrige : utilisation de l'operateur spaceship (<=>) pour comparaisons propres
 
+### Paiement Stripe
+- [x] Integration Stripe Checkout (1 EUR/jeton)
+- [x] Webhook Stripe pour confirmation paiement
+- [x] Page de succes apres paiement
+- [x] Table `achats` pour historique
+
 ### Fonctionnalites manquantes
 - [ ] Emails de notification
 - [ ] Suppression automatique anciennes images non utilisees
