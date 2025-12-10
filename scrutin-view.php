@@ -607,6 +607,17 @@ $typeLabels = [
             font-size: 14px;
             color: #2e7d32;
         }
+
+        .btn-outline {
+            background: white;
+            color: #667eea;
+            border: 1px solid #667eea;
+        }
+
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -665,6 +676,7 @@ $typeLabels = [
                 <a href="/<?php echo urlencode($scrutin['code']); ?>/s/" class="btn btn-secondary">Modifier</a>
                 <?php endif; ?>
                 <a href="/<?php echo urlencode($scrutin['code']); ?>/r/" class="btn btn-primary">Resultats</a>
+                <a href="/scrutin-export.php?code=<?php echo urlencode($scrutin['code']); ?>" class="btn btn-outline" title="Telecharger la structure du scrutin">Exporter XLS</a>
             </div>
             <?php endif; ?>
         </div>

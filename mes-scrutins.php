@@ -461,6 +461,7 @@ function getScrutinStatus($scrutin) {
                 <?php if ($nbArchives > 0): ?>
                 <a href="/mes-scrutins.php?archives" class="btn btn-secondary">Archives (<?php echo $nbArchives; ?>)</a>
                 <?php endif; ?>
+                <a href="/scrutin-import.php" class="btn btn-outline">Importer XLS</a>
                 <a href="/scrutin-create.php" class="btn btn-primary">Nouveau scrutin</a>
                 <?php endif; ?>
             </div>

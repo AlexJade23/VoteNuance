@@ -35,5 +35,16 @@ CREATE TABLE IF NOT EXISTS achats (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
+-- Migration 003 - 2024-12-10 - Colonnes import pour bulletins
+-- ============================================================================
+-- Permet de tracer les bulletins importes depuis un fichier XLS
+
+ALTER TABLE bulletins ADD COLUMN est_importe TINYINT(1) DEFAULT 0
+    COMMENT '1 si bulletin importe depuis fichier XLS';
+
+ALTER TABLE bulletins ADD COLUMN imported_at DATETIME NULL
+    COMMENT 'Date/heure de l import';
+
+-- ============================================================================
 -- FIN DES MIGRATIONS
 -- ============================================================================

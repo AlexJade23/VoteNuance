@@ -651,6 +651,8 @@ foreach ($lotsData as $lotNum => $data) {
         <div class="card" style="text-align: center; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
             <button onclick="exportResultsCsv()" class="btn btn-secondary">Exporter CSV</button>
             <a href="/<?php echo urlencode($code); ?>/pdf/" class="btn btn-secondary" target="_blank">Exporter PDF</a>
+            <a href="/votes-export.php?code=<?php echo urlencode($code); ?>" class="btn btn-secondary" title="Excel avec formules">Exporter XLS</a>
+            <a href="/votes-import.php?code=<?php echo urlencode($code); ?>" class="btn btn-secondary" title="Importer des votes (fusion offline/online)">Importer XLS</a>
             <a href="/<?php echo urlencode($code); ?>/s/" class="btn btn-primary">Modifier le scrutin</a>
         </div>
         <?php endif; ?>
