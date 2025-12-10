@@ -410,6 +410,8 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - [x] Paiement Stripe pour les jetons (1 EUR/jeton)
 
 ### A venir
+- [ ] UX scrutins prives : alertes et rappels pour generer des jetons (US-015, priorite haute)
+- [ ] Graphique evolution de la participation dans le temps (US-014, priorite moyenne)
 - [ ] Emails de notification (priorite basse)
 - [ ] Mode sombre (priorite basse)
 
@@ -418,7 +420,7 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 Voir [BACKLOG.md](BACKLOG.md) pour le backlog Agile complet avec User Stories.
 
 ### Prochaine priorite
-- **US-007** : Emails de notification (priorite basse)
+- **US-015** : Amelioration UX scrutins prives sans jetons (priorite haute)
 
 ## Deploiement
 

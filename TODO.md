@@ -96,6 +96,17 @@
 - [x] Page de succes apres paiement
 - [x] Table `achats` pour historique
 
+### UX scrutins prives (US-015)
+- [ ] Info-bulle sur option "Scrutin prive" (creation)
+- [ ] Message de rappel apres creation scrutin prive
+- [ ] Alerte sur page scrutin si prive et 0 jetons
+- [ ] Badge dans liste scrutins si prive sans jetons
+
+### Graphique participation (US-014)
+- [ ] Graphique evolution emargements dans le temps
+- [ ] Select cumul / par periode
+- [ ] Granularite auto (minute/heure/jour)
+
 ### Fonctionnalites manquantes
 - [ ] Emails de notification
 - [ ] Suppression automatique anciennes images non utilisees
