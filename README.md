@@ -119,6 +119,11 @@ VoteNuance/
 ├── stripe-webhook.php      # Reception webhooks Stripe
 ├── stripe-success.php      # Page confirmation paiement
 │
+├── scrutin-export.php      # Export scrutin en XLS (structure)
+├── scrutin-import.php      # Import scrutin depuis XLS
+├── votes-export.php        # Export votes en XLS (avec formules)
+├── votes-import.php        # Import votes (fusion offline/online)
+│
 ├── BACKLOG.md              # Backlog Agile avec User Stories
 ├── TODO.md                 # Liste des taches
 └── README.md               # Ce fichier
@@ -284,6 +289,15 @@ chmod 755 uploads
 - [x] Affichage QCM, prefere du lot et reponses ouvertes
 - [x] Export CSV des resultats (avec sections par lot)
 - [x] Export PDF des resultats (format A4 paysage avec graphiques)
+- [x] Export XLS avec formules Excel (pedagogique)
+- [x] Import XLS pour fusion votes offline/online
+
+### Export/Import XLS
+- [x] Export structure scrutin (partage de modeles entre utilisateurs)
+- [x] Import scrutin (creation d'un nouveau scrutin depuis un fichier)
+- [x] Export votes avec formules Excel (modification = recalcul instantane)
+- [x] Import votes (mode "ajouter" ou "remplacer")
+- [x] Format XML Spreadsheet (compatible Excel/LibreOffice, sans dependance)
 
 ### Scrutins prives (jetons)
 - [x] Verification du jeton a l'acces au vote
@@ -409,13 +423,9 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - [x] Conservation des questions saisies en cas d'erreur
 - [x] Paiement Stripe pour les jetons (1 EUR/jeton)
 - [x] UX scrutins prives : alertes et rappels pour generer des jetons (US-015)
+- [x] Export/Import XLS scrutins et votes (US-016 a US-019)
 
 ### A venir
-- [ ] Export/Import XLSX scrutins et votes (US-016 a US-019, priorite moyenne)
-  - Export structure scrutin (partage de modeles)
-  - Import scrutin (creation depuis modele)
-  - Export votes avec formules Excel (pedagogique)
-  - Import votes (fusion offline/online)
 - [ ] Graphique evolution de la participation dans le temps (US-014, priorite moyenne)
 - [ ] Emails de notification (priorite basse)
 - [ ] Mode sombre (priorite basse)
@@ -425,7 +435,7 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 Voir [BACKLOG.md](BACKLOG.md) pour le backlog Agile complet avec User Stories.
 
 ### Prochaine priorite
-- **US-015** : Amelioration UX scrutins prives sans jetons (priorite haute)
+- **US-014** : Graphique evolution de la participation dans le temps
 
 ## Deploiement
 
