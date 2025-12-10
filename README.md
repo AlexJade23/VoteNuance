@@ -424,18 +424,15 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - [x] Paiement Stripe pour les jetons (1 EUR/jeton)
 - [x] UX scrutins prives : alertes et rappels pour generer des jetons (US-015)
 - [x] Export/Import XLS scrutins et votes (US-016 a US-019)
+- [x] Graphique evolution de la participation dans le temps (US-014)
 
 ### A venir
-- [ ] Graphique evolution de la participation dans le temps (US-014, priorite moyenne)
 - [ ] Emails de notification (priorite basse)
 - [ ] Mode sombre (priorite basse)
 
 ## Backlog
 
 Voir [BACKLOG.md](BACKLOG.md) pour le backlog Agile complet avec User Stories.
-
-### Prochaine priorite
-- **US-014** : Graphique evolution de la participation dans le temps
 
 ## Deploiement
 

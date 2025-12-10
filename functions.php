@@ -1015,6 +1015,92 @@ function createStripeCheckoutSession($scrutinId, $userId, $nbJetons, $successUrl
     ];
 }
 
+// ============================================================================
+// STATISTIQUES PARTICIPATION
+// ============================================================================
+
+/**
+ * Recuperer la timeline de participation (emargements) pour un scrutin
+ * Granularite automatique selon la duree du scrutin
+ * @return array ['data' => [...], 'granularity' => 'minute'|'hour'|'day', 'labels' => [...]]
+ */
+function getParticipationTimeline($scrutinId) {
+    $pdo = getDbConnection();
+
+    // Recuperer le premier et dernier emargement
+    $stmt = $pdo->prepare('
+        SELECT MIN(voted_at) as first_vote, MAX(voted_at) as last_vote, COUNT(*) as total
+        FROM emargements
+        WHERE scrutin_id = ?
+    ');
+    $stmt->execute([$scrutinId]);
+    $range = $stmt->fetch();
+
+    if (!$range['first_vote'] || $range['total'] == 0) {
+        return [
+            'data' => [],
+            'cumulative' => [],
+            'labels' => [],
+            'granularity' => 'hour',
+            'total' => 0
+        ];
+    }
+
+    $firstVote = strtotime($range['first_vote']);
+    $lastVote = strtotime($range['last_vote']);
+    $duration = $lastVote - $firstVote;
+
+    // Determiner la granularite
+    if ($duration < 86400) { // < 1 jour
+        $granularity = 'minute';
+        $sqlFormat = '%Y-%m-%d %H:%i';
+        $phpFormat = 'H:i';
+        $interval = 60; // 1 minute
+    } elseif ($duration < 7 * 86400) { // 1-7 jours
+        $granularity = 'hour';
+        $sqlFormat = '%Y-%m-%d %H:00';
+        $phpFormat = 'd/m H\\h';
+        $interval = 3600; // 1 heure
+    } else { // > 7 jours
+        $granularity = 'day';
+        $sqlFormat = '%Y-%m-%d';
+        $phpFormat = 'd/m';
+        $interval = 86400; // 1 jour
+    }
+
+    // Agreger les emargements par periode
+    $stmt = $pdo->prepare("
+        SELECT DATE_FORMAT(voted_at, ?) as period, COUNT(*) as count
+        FROM emargements
+        WHERE scrutin_id = ?
+        GROUP BY period
+        ORDER BY period
+    ");
+    $stmt->execute([$sqlFormat, $scrutinId]);
+    $rows = $stmt->fetchAll();
+
+    // Construire les donnees
+    $data = [];
+    $labels = [];
+    $cumulative = [];
+    $cumulativeTotal = 0;
+
+    foreach ($rows as $row) {
+        $labels[] = date($phpFormat, strtotime($row['period']));
+        $data[] = (int)$row['count'];
+        $cumulativeTotal += (int)$row['count'];
+        $cumulative[] = $cumulativeTotal;
+    }
+
+    return [
+        'data' => $data,
+        'cumulative' => $cumulative,
+        'labels' => $labels,
+        'granularity' => $granularity,
+        'total' => (int)$range['total']
+    ];
+}
+
 /**
  * Verifier la signature d'un webhook Stripe
  */

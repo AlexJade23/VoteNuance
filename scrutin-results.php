@@ -361,6 +361,12 @@ foreach ($lotsData as $lotNum => $data) {
         'showOrdre' => $data['showOrdre']
     ];
 }
+
+// Recuperer la timeline de participation (pour le proprietaire uniquement)
+$participationTimeline = null;
+if ($isOwner && $nbParticipants > 0) {
+    $participationTimeline = getParticipationTimeline($scrutin['id']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -506,6 +512,37 @@ foreach ($lotsData as $lotNum => $data) {
             .mode-paysage-chart { display: none !important; }
             #mode-portrait { display: block; }
         }
+        /* Graphique participation */
+        .participation-chart-wrapper {
+            height: 250px;
+            position: relative;
+        }
+        .participation-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .participation-controls select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        .participation-info {
+            font-size: 13px;
+            color: #666;
+        }
+        .participation-info .granularity {
+            background: #e7f3ff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -528,6 +565,35 @@ foreach ($lotsData as $lotNum => $data) {
                 </span>
             </div>
         </div>
+
+        <?php if ($isOwner && $participationTimeline && !empty($participationTimeline['data'])): ?>
+        <!-- Graphique evolution participation (proprietaire uniquement) -->
+        <div class="card">
+            <h2>Evolution de la participation</h2>
+            <div class="participation-controls">
+                <select id="participationMode" onchange="updateParticipationChart()">
+                    <option value="cumulative">Cumul</option>
+                    <option value="period">Par periode</option>
+                </select>
+                <div class="participation-info">
+                    <span class="granularity">
+                        <?php
+                        $granLabel = [
+                            'minute' => 'Par minute',
+                            'hour' => 'Par heure',
+                            'day' => 'Par jour'
+                        ];
+                        echo $granLabel[$participationTimeline['granularity']] ?? 'Auto';
+                        ?>
+                    </span>
+                    - <?php echo $participationTimeline['total']; ?> participant<?php echo $participationTimeline['total'] > 1 ? 's' : ''; ?> au total
+                </div>
+            </div>
+            <div class="participation-chart-wrapper">
+                <canvas id="participationChart"></canvas>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <?php if ($nbParticipants == 0): ?>
         <div class="card">
@@ -771,6 +837,85 @@ foreach ($lotsData as $lotNum => $data) {
         document.body.removeChild(link);
     }
     </script>
+
+    <?php if ($isOwner && $participationTimeline && !empty($participationTimeline['data'])): ?>
+    <script>
+    // Donnees pour le graphique de participation
+    const participationData = <?php echo json_encode($participationTimeline); ?>;
+    let participationChart = null;
+
+    function createParticipationChart() {
+        const ctx = document.getElementById('participationChart');
+        if (!ctx) return;
+
+        const mode = document.getElementById('participationMode').value;
+        const isCumulative = (mode === 'cumulative');
+
+        const data = isCumulative ? participationData.cumulative : participationData.data;
+        const chartType = isCumulative ? 'line' : 'bar';
+        const label = isCumulative ? 'Cumul participants' : 'Participants par periode';
+        const bgColor = isCumulative ? 'rgba(102, 126, 234, 0.2)' : 'rgba(102, 126, 234, 0.7)';
+        const borderColor = 'rgba(102, 126, 234, 1)';
+
+        if (participationChart) {
+            participationChart.destroy();
+        }
+
+        participationChart = new Chart(ctx.getContext('2d'), {
+            type: chartType,
+            data: {
+                labels: participationData.labels,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    backgroundColor: bgColor,
+                    borderColor: borderColor,
+                    borderWidth: 2,
+                    fill: isCumulative,
+                    tension: 0.3,
+                    pointRadius: isCumulative ? 3 : 0,
+                    pointHoverRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + ' participant' + (context.parsed.y > 1 ? 's' : '');
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            callback: function(value) {
+                                if (Number.isInteger(value)) return value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateParticipationChart() {
+        createParticipationChart();
+    }
+
+    // Initialiser le graphique au chargement
+    document.addEventListener('DOMContentLoaded', createParticipationChart);
+    </script>
+    <?php endif; ?>
 
     <?php if (!empty($lotsChartData)): ?>
     <script>

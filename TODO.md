@@ -102,10 +102,10 @@
 - [x] Alerte sur page scrutin si prive et 0 jetons
 - [x] Badge dans liste scrutins si prive sans jetons
 
-### Graphique participation (US-014)
-- [ ] Graphique evolution emargements dans le temps
-- [ ] Select cumul / par periode
-- [ ] Granularite auto (minute/heure/jour)
+### Graphique participation (US-014) - DONE
+- [x] Graphique evolution emargements dans le temps
+- [x] Select cumul / par periode
+- [x] Granularite auto (minute/heure/jour)
 
 ### Export/Import XLS (Epic 7) - DONE
 - [x] US-016 : Export scrutin en XLS (structure multi-onglets)

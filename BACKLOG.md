@@ -315,31 +315,31 @@ plutot qu'une librairie PDF externe. Avantages :
 ---
 
 ### US-014 : Graphique evolution de la participation dans le temps
-**Statut** : A faire | **Priorite** : Moyenne | **Estimation** : M
+**Statut** : Done | **Priorite** : Moyenne | **Estimation** : M
 
 **En tant que** organisateur de scrutin
 **Je veux** voir un graphique montrant l'evolution du nombre d'emargements dans le temps
 **Afin de** suivre la dynamique de participation et identifier les pics de vote
 
 #### Criteres d'acceptation
-- [ ] Graphique Chart.js sur la page resultats (visible uniquement par le createur)
-- [ ] Select pour choisir le mode d'affichage :
+- [x] Graphique Chart.js sur la page resultats (visible uniquement par le createur)
+- [x] Select pour choisir le mode d'affichage :
   - Cumul (courbe montante)
   - Par periode (barres)
-- [ ] Granularite automatique selon la duree du scrutin :
+- [x] Granularite automatique selon la duree du scrutin :
   - Scrutin < 1 jour : granularite a la minute
   - Scrutin 1-7 jours : granularite a l'heure
   - Scrutin > 7 jours : granularite au jour
-- [ ] Axe X : temps (minutes/heures/jours)
-- [ ] Axe Y : nombre d'emargements (cumule ou par periode)
-- [ ] Affichage du nombre total de participants
+- [x] Axe X : temps (minutes/heures/jours)
+- [x] Axe Y : nombre d'emargements (cumule ou par periode)
+- [x] Affichage du nombre total de participants
 
 #### Taches techniques
-- [ ] Requete SQL pour agreger les emargements par periode (GROUP BY)
-- [ ] Fonction getParticipationTimeline($scrutinId) dans functions.php
-- [ ] Detection automatique de la granularite selon date debut/fin ou premier/dernier vote
-- [ ] Integration graphique Chart.js dans scrutin-results.php
-- [ ] Format responsive (adapte mobile)
+- [x] Requete SQL pour agreger les emargements par periode (GROUP BY)
+- [x] Fonction getParticipationTimeline($scrutinId) dans functions.php
+- [x] Detection automatique de la granularite selon premier/dernier vote
+- [x] Integration graphique Chart.js dans scrutin-results.php
+- [x] Format responsive (adapte mobile)
 
 #### Fichiers concernes
 - scrutin-results.php
