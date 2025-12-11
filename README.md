@@ -427,8 +427,11 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - [x] Graphique evolution de la participation dans le temps (US-014)
 
 ### A venir
+- [ ] Echelles flexibles 3/5/7 mentions (US-020, priorite moyenne)
 - [ ] Emails de notification (priorite basse)
 - [ ] Mode sombre (priorite basse)
+- [ ] Drag & drop et compression images (priorite basse)
+- [ ] Nettoyage automatique images orphelines (priorite basse)
 
 ## Backlog
 

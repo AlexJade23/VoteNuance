@@ -20,7 +20,7 @@ $csrfToken = generateCsrfToken();
 $tokenStatsByScrutin = [];
 foreach ($allScrutins as $s) {
     if (!$s['est_public']) {
-        $tokenStatsByScrutin[$s['id']] = getTokenStats($s['id']);
+        $tokenStatsByScrutin[$s['id']] = countTokens($s['id']);
     }
 }
 

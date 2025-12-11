@@ -65,6 +65,8 @@
 - [x] README mis a jour
 - [x] Titre resultats : "Classement par taux de partisans net"
 - [x] Suppression ligne stats inutile sous legende
+- [x] Bug classement ex aequo corrige (operateur spaceship)
+- [x] Bug getTokenStats() -> countTokens() dans mes-scrutins.php
 
 ### Gestion des lots
 - [x] Question "Prefere du lot" (type=3)
@@ -82,56 +84,52 @@
 ### Conservation des donnees en cas d'erreur
 - [x] Les questions saisies sont conservees si erreur a la creation
 
-## A faire
-
-### Corrections prioritaires
-- [x] **Bug classement ex aequo** : Le departage ne fonctionne pas correctement
-  - Regle a appliquer : si classement egal, departager par AP-AC, puis FP-FC, puis PP-PC
-  - Fichier : scrutin-results.php (fonction sortByClassement)
-  - Corrige : utilisation de l'operateur spaceship (<=>) pour comparaisons propres
-
 ### Paiement Stripe
 - [x] Integration Stripe Checkout (1 EUR/jeton)
 - [x] Webhook Stripe pour confirmation paiement
 - [x] Page de succes apres paiement
 - [x] Table `achats` pour historique
 
-### UX scrutins prives (US-015) - DONE
+### UX scrutins prives (US-015)
 - [x] Info-bulle sur option "Scrutin prive" (creation)
 - [x] Message de rappel apres creation scrutin prive
 - [x] Alerte sur page scrutin si prive et 0 jetons
 - [x] Badge dans liste scrutins si prive sans jetons
 
-### Graphique participation (US-014) - DONE
+### Graphique participation (US-014)
 - [x] Graphique evolution emargements dans le temps
 - [x] Select cumul / par periode
 - [x] Granularite auto (minute/heure/jour)
+- [x] Axe X proportionnel au temps (echelle temporelle)
 
-### Export/Import XLS (Epic 7) - DONE
+### Export/Import XLS (Epic 7)
 - [x] US-016 : Export scrutin en XLS (structure multi-onglets)
 - [x] US-017 : Import scrutin depuis XLS (cree nouveau scrutin)
 - [x] US-018 : Export votes en XLS avec formules (pedagogique)
 - [x] US-019 : Import votes (fusion offline/online, mode ajouter/remplacer)
 - [x] Format XML Spreadsheet (sans dependance externe)
 
-### Fonctionnalites manquantes
-- [ ] Emails de notification
-- [ ] Suppression automatique anciennes images non utilisees
-- [ ] **Centralisation du nombre de mentions par scrutin**
-  - Toutes les questions d'un scrutin utilisent le meme nombre de mentions
-  - Choix au niveau du scrutin (pas de la question) pour simplifier
-  - Support 3, 5 ou 7 mentions :
-    - 3 mentions : Contre / Sans Avis / Pour
-    - 5 mentions : Franchement Contre / Contre / Sans Avis / Pour / Franchement Pour
-    - 7 mentions : AC / FC / PC / SA / PP / FP / AP (actuel)
-  - Fichiers concernes : scrutin-create.php, scrutin-edit.php, vote.php, scrutin-results.php
+## A faire
 
-### Ameliorations possibles
-- [ ] Drag & drop pour upload images
-- [ ] Compression automatique des images
-- [ ] Preview video YouTube/Vimeo
-- [ ] Mode sombre
-- [x] border-radius: 6px; sur le style .nav-logo
+### Fonctionnalites en attente
+- [ ] **US-020 : Echelles flexibles (3/5/7 mentions)** - Priorite moyenne
+  - Choix au niveau du scrutin (pas de la question)
+  - 3 mentions : Contre / Sans Avis / Pour
+  - 5 mentions : FC / C / SA / P / FP
+  - 7 mentions : AC / FC / PC / SA / PP / FP / AP (actuel)
+  - Fichiers : scrutin-create.php, scrutin-edit.php, vote.php, scrutin-results.php
+
+### Notifications (priorite basse)
+- [ ] US-007 : Email de confirmation de vote
+- [ ] US-008 : Email notification nouveaux resultats
+
+### Ameliorations UX (priorite basse)
+- [ ] US-009 : Drag & drop pour upload images
+- [ ] US-010 : Compression automatique des images
+- [ ] US-011 : Mode sombre
+
+### Maintenance (priorite basse)
+- [ ] US-012 : Suppression automatique anciennes images non utilisees
 
 ## Notes techniques
 
