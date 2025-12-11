@@ -117,6 +117,14 @@
 ### Fonctionnalites manquantes
 - [ ] Emails de notification
 - [ ] Suppression automatique anciennes images non utilisees
+- [ ] **Centralisation du nombre de mentions par scrutin**
+  - Toutes les questions d'un scrutin utilisent le meme nombre de mentions
+  - Choix au niveau du scrutin (pas de la question) pour simplifier
+  - Support 3, 5 ou 7 mentions :
+    - 3 mentions : Contre / Sans Avis / Pour
+    - 5 mentions : Franchement Contre / Contre / Sans Avis / Pour / Franchement Pour
+    - 7 mentions : AC / FC / PC / SA / PP / FP / AP (actuel)
+  - Fichiers concernes : scrutin-create.php, scrutin-edit.php, vote.php, scrutin-results.php
 
 ### Ameliorations possibles
 - [ ] Drag & drop pour upload images

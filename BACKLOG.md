@@ -472,6 +472,66 @@ plutot qu'une librairie PDF externe. Avantages :
 
 ---
 
+## Epic 8 : Flexibilite des echelles de vote
+
+### US-020 : Centralisation du nombre de mentions par scrutin
+**Statut** : A faire | **Priorite** : Moyenne | **Estimation** : L
+
+**En tant que** organisateur de scrutin
+**Je veux** choisir le nombre de mentions (3, 5 ou 7) au niveau du scrutin
+**Afin de** simplifier la configuration et garantir la coherence entre toutes les questions
+
+#### Criteres d'acceptation
+- [ ] Choix du nombre de mentions a la creation du scrutin (defaut : 7)
+- [ ] Toutes les questions Vote Nuance du scrutin utilisent la meme echelle
+- [ ] 3 echelles disponibles :
+  - 3 mentions : Contre / Sans Avis / Pour
+  - 5 mentions : Franchement Contre / Contre / Sans Avis / Pour / Franchement Pour
+  - 7 mentions : AC / FC / PC / SA / PP / FP / AP (actuel)
+- [ ] Interface de vote adaptee au nombre de mentions
+- [ ] Graphiques resultats adaptes (couleurs et labels)
+- [ ] Export CSV/XLS adapte au nombre de mentions
+- [ ] Scrutins existants (7 mentions) non impactes
+
+#### Taches techniques
+- [ ] Ajouter colonne `nb_mentions` (TINYINT DEFAULT 7) dans table `scrutins`
+- [ ] Migration SQL (Migration 004)
+- [ ] Modifier scrutin-create.php : select pour choisir 3/5/7 mentions
+- [ ] Modifier scrutin-edit.php : afficher le nombre de mentions (non modifiable si votes)
+- [ ] Modifier vote.php : afficher uniquement les mentions de l'echelle choisie
+- [ ] Modifier scrutin-results.php : adapter graphiques et calculs
+- [ ] Modifier functions.php : fonction getMentionsForScale($nb) retournant les mentions
+- [ ] Adapter exports CSV/XLS au nombre de mentions
+- [ ] Tests : verifier calcul Vote Nuance avec 3 et 5 mentions
+
+#### Mapping des mentions par echelle
+
+| Echelle | Mentions |
+|---------|----------|
+| 3 | Contre (C), Sans Avis (SA), Pour (P) |
+| 5 | Franchement Contre (FC), Contre (C), Sans Avis (SA), Pour (P), Franchement Pour (FP) |
+| 7 | AC, FC, PC, SA, PP, FP, AP |
+
+#### Calcul Vote Nuance adapte
+
+| Echelle | Formule classement |
+|---------|-------------------|
+| 3 | P + (SA / 2) |
+| 5 | FP + P + (SA / 2) |
+| 7 | AP + FP + PP + (SA / 2) |
+
+#### Fichiers concernes
+- database.migrations.sql
+- scrutin-create.php
+- scrutin-edit.php
+- vote.php
+- scrutin-results.php
+- functions.php
+- votes-export.php
+- export-csv (dans scrutin-results.php)
+
+---
+
 ## Epic 6 : Ameliorations UX
 
 ### US-009 : Drag & drop upload images
