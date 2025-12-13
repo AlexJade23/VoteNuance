@@ -138,7 +138,7 @@ $dbExists = $stmt->rowCount() > 0;
 // Action : installation
 if ($action === 'install') {
     echo '<div class="card">';
-    echo '<h2>Exécution de l\'installation... (v3)</h2>';
+    echo '<h2>Exécution de l\'installation... (v4)</h2>';
 
     $errors = [];
     $successes = [];
@@ -185,20 +185,19 @@ if ($action === 'install') {
     $schema = preg_replace('/USE\s+\w+\s*;/s', '', $schema);
 
     // 5. Exécuter le schéma statement par statement
-    // Utiliser une regex plus robuste pour séparer les statements SQL
-    // On split sur les ; suivis d'un retour à la ligne (pas ceux dans les strings)
-    $statements = preg_split('/;\s*\n/', $schema);
+    // Retirer tous les commentaires d'abord
+    $schema = preg_replace('/--[^\n]*/', '', $schema);
+    $schema = preg_replace('/\/\*.*?\*\//s', '', $schema);
 
+    // Split sur ; (simple)
+    $statements = explode(';', $schema);
+
+    $stmtCount = 0;
     foreach ($statements as $stmt) {
-        $stmt = trim($stmt);
-        // Ignorer les lignes vides et les commentaires purs
-        if (empty($stmt) || preg_match('/^--/', $stmt) || preg_match('/^\/\*/', $stmt)) continue;
-
-        // Nettoyer les commentaires en fin de ligne
-        $stmt = preg_replace('/--[^\n]*$/', '', $stmt);
         $stmt = trim($stmt);
         if (empty($stmt)) continue;
 
+        $stmtCount++;
         try {
             $pdo->exec($stmt);
             // Extraire le nom de la table/vue pour le log
@@ -206,12 +205,16 @@ if ($action === 'install') {
                 $successes[] = "Créé : " . $m[1];
             } elseif (preg_match('/INSERT\s+INTO\s+(\w+)/i', $stmt, $m)) {
                 $successes[] = "Données insérées dans : " . $m[1];
+            } elseif (preg_match('/ALTER\s+TABLE\s+(\w+)/i', $stmt, $m)) {
+                $successes[] = "Modifié : " . $m[1];
+            } else {
+                $successes[] = "Exécuté stmt #" . $stmtCount;
             }
         } catch (PDOException $e) {
-            // Ignorer les erreurs "already exists"
+            // Ignorer les erreurs "already exists" et "Duplicate"
             if (strpos($e->getMessage(), 'already exists') === false &&
                 strpos($e->getMessage(), 'Duplicate') === false) {
-                $errors[] = "SQL Error: " . $e->getMessage();
+                $errors[] = "SQL #$stmtCount: " . $e->getMessage();
             }
         }
     }

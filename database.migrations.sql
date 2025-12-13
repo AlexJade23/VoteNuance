@@ -46,5 +46,13 @@ ALTER TABLE bulletins ADD COLUMN imported_at DATETIME NULL
     COMMENT 'Date/heure de l import';
 
 -- ============================================================================
+-- Migration 004 - 2024-12-13 - Echelles flexibles (US-020)
+-- ============================================================================
+-- Permet de choisir le nombre de mentions par scrutin (3, 5 ou 7)
+
+ALTER TABLE scrutins ADD COLUMN nb_mentions TINYINT UNSIGNED DEFAULT 7
+    COMMENT 'Nombre de mentions: 3, 5 ou 7 (defaut: 7)';
+
+-- ============================================================================
 -- FIN DES MIGRATIONS
 -- ============================================================================

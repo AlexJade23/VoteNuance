@@ -16,7 +16,10 @@ if (!$scrutin) {
 }
 
 $questions = getQuestionsByScrutin($scrutin['id']);
-$mentions = getMentionsByEchelle(1);
+
+// Récupérer les mentions selon l'échelle du scrutin (3, 5 ou 7 mentions)
+$nbMentions = $scrutin['nb_mentions'] ?? 7;
+$mentions = getMentionsForScale($nbMentions);
 
 // Mélanger aléatoirement les questions appartenant à un même lot
 // Les questions avec lot=0 gardent leur position d'origine
@@ -1083,7 +1086,7 @@ $typeLabels = [
                         <input type="radio" name="vote[<?php echo $question['id']; ?>]"
                                id="q<?php echo $question['id']; ?>_m<?php echo $mention['rang']; ?>"
                                value="<?php echo $mention['rang']; ?>"
-                               <?php echo ($mention['rang'] == 4) ? 'checked' : ''; ?>>
+                               <?php echo ($mention['code'] == 'SA') ? 'checked' : ''; ?>>
                         <label for="q<?php echo $question['id']; ?>_m<?php echo $mention['rang']; ?>"
                                style="background: <?php echo $mention['couleur']; ?>;">
                             <?php echo htmlspecialchars($mention['libelle']); ?>

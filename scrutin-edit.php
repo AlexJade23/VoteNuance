@@ -51,6 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $affiche_resultats = isset($_POST['affiche_resultats']) ? 1 : 0;
         $est_public = isset($_POST['est_public']) ? 1 : 0;
         $ordre_mentions = intval($_POST['ordre_mentions'] ?? 0);
+        // nb_mentions ne peut être modifié que s'il n'y a pas de votes
+        $nb_mentions = $hasVotes ? ($scrutin['nb_mentions'] ?? 7) : intval($_POST['nb_mentions'] ?? 7);
+        if (!in_array($nb_mentions, [3, 5, 7])) {
+            $nb_mentions = 7;
+        }
 
         if (empty($titre)) {
             $errors[] = 'Le titre est obligatoire';
@@ -100,7 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'nb_gagnants' => $nb_gagnants,
                     'affiche_resultats' => $affiche_resultats,
                     'est_public' => $est_public,
-                    'ordre_mentions' => $ordre_mentions
+                    'ordre_mentions' => $ordre_mentions,
+                    'nb_mentions' => $nb_mentions
                 ]);
 
                 // Supprimer les anciennes questions et recréer
@@ -655,13 +661,39 @@ $csrfToken = generateCsrfToken();
                 </div>
 
                 <div class="form-group" style="margin-top: 20px;">
+                    <label>Nombre de mentions (echelle de vote)</label>
+                    <?php if ($hasVotes): ?>
+                        <input type="hidden" name="nb_mentions" value="<?php echo $scrutin['nb_mentions'] ?? 7; ?>">
+                        <div style="padding: 10px; background: #f5f5f5; border-radius: 4px; color: #666;">
+                            <?php echo getScaleLabel($scrutin['nb_mentions'] ?? 7); ?>
+                            <br><small style="color: #999;">Non modifiable car des votes ont deja ete enregistres.</small>
+                        </div>
+                    <?php else: ?>
+                        <select name="nb_mentions" id="nb_mentions" style="max-width: 400px;">
+                            <option value="7" <?php echo ($scrutin['nb_mentions'] ?? 7) == 7 ? 'selected' : ''; ?>>
+                                7 mentions : AC / FC / PC / Sans Avis / PP / FP / AP
+                            </option>
+                            <option value="5" <?php echo ($scrutin['nb_mentions'] ?? 7) == 5 ? 'selected' : ''; ?>>
+                                5 mentions : FC / Contre / Sans Avis / Pour / FP
+                            </option>
+                            <option value="3" <?php echo ($scrutin['nb_mentions'] ?? 7) == 3 ? 'selected' : ''; ?>>
+                                3 mentions : Contre / Sans Avis / Pour
+                            </option>
+                        </select>
+                        <small style="display: block; margin-top: 5px; color: #666;">
+                            Ce choix s'applique a toutes les questions Vote Nuance du scrutin.
+                        </small>
+                    <?php endif; ?>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
                     <label>Ordre d'affichage des mentions</label>
                     <select name="ordre_mentions" style="max-width: 300px;">
                         <option value="0" <?php echo ($scrutin['ordre_mentions'] ?? 0) == 0 ? 'selected' : ''; ?>>
-                            Contre → Pour (AC, FC, PC, SA, PP, FP, AP)
+                            Contre → Pour
                         </option>
                         <option value="1" <?php echo ($scrutin['ordre_mentions'] ?? 0) == 1 ? 'selected' : ''; ?>>
-                            Pour → Contre (AP, FP, PP, SA, PC, FC, AC)
+                            Pour → Contre
                         </option>
                     </select>
                 </div>

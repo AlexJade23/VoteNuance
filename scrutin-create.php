@@ -33,6 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $affiche_resultats = isset($_POST['affiche_resultats']) ? 1 : 0;
         $est_public = isset($_POST['est_public']) ? 1 : 0;
         $ordre_mentions = intval($_POST['ordre_mentions'] ?? 0);
+        $nb_mentions = intval($_POST['nb_mentions'] ?? 7);
+
+        // Validation nb_mentions
+        if (!in_array($nb_mentions, [3, 5, 7])) {
+            $nb_mentions = 7;
+        }
 
         // Validation
         if (empty($titre)) {
@@ -93,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'affiche_resultats' => $affiche_resultats,
                     'est_public' => $est_public,
                     'ordre_mentions' => $ordre_mentions,
+                    'nb_mentions' => $nb_mentions,
                     'owner_id' => $user['id']
                 ]);
 
@@ -676,13 +683,31 @@ $csrfToken = generateCsrfToken();
                 </div>
 
                 <div class="form-group" style="margin-top: 20px;">
+                    <label>Nombre de mentions (echelle de vote)</label>
+                    <select name="nb_mentions" id="nb_mentions" style="max-width: 400px;">
+                        <option value="7" <?php echo ($_POST['nb_mentions'] ?? 7) == 7 ? 'selected' : ''; ?>>
+                            7 mentions : AC / FC / PC / Sans Avis / PP / FP / AP
+                        </option>
+                        <option value="5" <?php echo ($_POST['nb_mentions'] ?? 7) == 5 ? 'selected' : ''; ?>>
+                            5 mentions : FC / Contre / Sans Avis / Pour / FP
+                        </option>
+                        <option value="3" <?php echo ($_POST['nb_mentions'] ?? 7) == 3 ? 'selected' : ''; ?>>
+                            3 mentions : Contre / Sans Avis / Pour
+                        </option>
+                    </select>
+                    <small style="display: block; margin-top: 5px; color: #666;">
+                        Ce choix s'applique a toutes les questions Vote Nuance du scrutin.
+                    </small>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
                     <label>Ordre d'affichage des mentions</label>
                     <select name="ordre_mentions" style="max-width: 300px;">
                         <option value="0" <?php echo ($_POST['ordre_mentions'] ?? 0) == 0 ? 'selected' : ''; ?>>
-                            Contre → Pour (AC, FC, PC, SA, PP, FP, AP)
+                            Contre → Pour
                         </option>
                         <option value="1" <?php echo ($_POST['ordre_mentions'] ?? 0) == 1 ? 'selected' : ''; ?>>
-                            Pour → Contre (AP, FP, PP, SA, PC, FC, AC)
+                            Pour → Contre
                         </option>
                     </select>
                 </div>

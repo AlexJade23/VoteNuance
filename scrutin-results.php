@@ -34,13 +34,16 @@ if (!$isEnded && !$scrutin['affiche_resultats'] && !$isOwner) {
 }
 
 $questions = getQuestionsByScrutin($scrutin['id']);
-$mentions = getMentionsByEchelle(1);
+
+// Récupérer les mentions selon l'échelle du scrutin
+$nbMentions = $scrutin['nb_mentions'] ?? 7;
+$mentions = getMentionsForScale($nbMentions);
 
 // Inverser l'ordre si demandé
 $ordreInverse = $scrutin['ordre_mentions'] ?? 0;
 
 // Récupérer les résultats pour une question
-function getResultsForQuestion($scrutinId, $questionId, $typeQuestion) {
+function getResultsForQuestion($scrutinId, $questionId, $typeQuestion, $nbMentions = 7) {
     $pdo = getDbConnection();
 
     if ($typeQuestion == 0) {
@@ -58,26 +61,34 @@ function getResultsForQuestion($scrutinId, $questionId, $typeQuestion) {
             $counts[$row['vote_mention']] = (int)$row['count'];
         }
 
-        // Comptages individuels
-        $ac = $counts[1] ?? 0;  // Absolument Contre
-        $fc = $counts[2] ?? 0;  // Franchement Contre
-        $pc = $counts[3] ?? 0;  // Plutôt Contre
-        $sa = $counts[4] ?? 0;  // Sans Avis
-        $pp = $counts[5] ?? 0;  // Plutôt Pour
-        $fp = $counts[6] ?? 0;  // Franchement Pour
-        $ap = $counts[7] ?? 0;  // Absolument Pour
+        // Récupérer les mentions pour cette échelle
+        $mentionsList = getMentionsForScale($nbMentions);
 
-        // Calcul du CLASSEMENT (formule Vote Nuancé) : AP + FP + PP + SA/2
-        $classement = $ap + $fp + $pp + ($sa / 2);
+        // Construire un tableau de votes par code de mention
+        $votesByCode = [];
+        foreach ($mentionsList as $m) {
+            $votesByCode[$m['code']] = $counts[$m['rang']] ?? 0;
+        }
 
-        // Niveaux de départage
-        $niveau1 = $ap - $ac;  // Avis absolus
-        $niveau2 = $fp - $fc;  // Avis francs
-        $niveau3 = $pp - $pc;  // Avis normaux
+        // Calcul du classement et des départages avec les fonctions utilitaires
+        $classement = calculateVoteNuanceScore($votesByCode, $nbMentions);
+        $tiebreakers = calculateTiebreakers($votesByCode, $nbMentions);
 
-        // Totaux pour statistiques
-        $pour = $ap + $fp + $pp;
-        $contre = $ac + $fc + $pc;
+        // Calculer pour/contre/neutre
+        $pour = 0;
+        $contre = 0;
+        $neutre = 0;
+        foreach ($mentionsList as $m) {
+            $count = $votesByCode[$m['code']] ?? 0;
+            if ($m['est_partisan'] > 0) {
+                $pour += $count;
+            } elseif ($m['est_partisan'] < 0) {
+                $contre += $count;
+            } else {
+                $neutre += $count;
+            }
+        }
+
         $total = array_sum($counts);
 
         // Taux partisans
@@ -88,13 +99,14 @@ function getResultsForQuestion($scrutinId, $questionId, $typeQuestion) {
         return [
             'type' => 'nuance',
             'counts' => $counts,
+            'votesByCode' => $votesByCode,
             'classement' => $classement,
-            'niveau1' => $niveau1,
-            'niveau2' => $niveau2,
-            'niveau3' => $niveau3,
+            'niveau1' => $tiebreakers[0],
+            'niveau2' => $tiebreakers[1],
+            'niveau3' => $tiebreakers[2],
             'pour' => $pour,
             'contre' => $contre,
-            'neutre' => $sa,
+            'neutre' => $neutre,
             'total' => $total,
             'tauxPartisans' => $tauxPartisans,
             'tauxOpposants' => $tauxOpposants,
@@ -162,7 +174,7 @@ $nbParticipants = $stmt->fetchColumn();
 $resultsByLot = [];
 foreach ($questions as $question) {
     if ($question['type_question'] == 0) {
-        $results = getResultsForQuestion($scrutin['id'], $question['id'], 0);
+        $results = getResultsForQuestion($scrutin['id'], $question['id'], 0, $nbMentions);
         if ($results && $results['total'] > 0) {
             $results['titre'] = $question['titre'];
             $results['id'] = $question['id'];
@@ -182,7 +194,7 @@ foreach ($questions as $question) {
 ksort($resultsByLot);
 
 // Fonction pour normaliser les résultats d'un lot
-function normalizeResults(&$results) {
+function normalizeResults(&$results, $nbMentions = 7) {
     if (empty($results)) return;
 
     $maxVotes = max(array_column($results, 'total'));
@@ -190,15 +202,23 @@ function normalizeResults(&$results) {
     foreach ($results as &$r) {
         $delta = $maxVotes - $r['total'];
         if ($delta > 0) {
-            $r['counts'][4] = ($r['counts'][4] ?? 0) + $delta;
-            $r['neutre'] = $r['counts'][4];
+            // Ajouter delta aux votes "Sans Avis"
+            $r['votesByCode']['SA'] = ($r['votesByCode']['SA'] ?? 0) + $delta;
+            $r['neutre'] = $r['votesByCode']['SA'];
             $r['total'] = $maxVotes;
 
-            $ap = $r['counts'][7] ?? 0;
-            $fp = $r['counts'][6] ?? 0;
-            $pp = $r['counts'][5] ?? 0;
-            $sa = $r['counts'][4];
-            $r['classement'] = $ap + $fp + $pp + ($sa / 2);
+            // Recalculer le classement avec les fonctions utilitaires
+            $r['classement'] = calculateVoteNuanceScore($r['votesByCode'], $nbMentions);
+            $tiebreakers = calculateTiebreakers($r['votesByCode'], $nbMentions);
+            $r['niveau1'] = $tiebreakers[0];
+            $r['niveau2'] = $tiebreakers[1];
+            $r['niveau3'] = $tiebreakers[2];
+
+            // Mettre à jour counts pour la compatibilité avec les graphiques
+            $mentionsList = getMentionsForScale($nbMentions);
+            foreach ($mentionsList as $m) {
+                $r['counts'][$m['rang']] = $r['votesByCode'][$m['code']] ?? 0;
+            }
 
             $pour = $r['pour'];
             $contre = $r['contre'];
@@ -282,7 +302,7 @@ function calculateRanks($results) {
 // Préparer les données pour chaque lot
 $lotsData = [];
 foreach ($resultsByLot as $lotNum => $results) {
-    normalizeResults($results);
+    normalizeResults($results, $nbMentions);
 
     $classement = sortByClassement($results);
     $ordre = sortByOrdre($results);
@@ -652,7 +672,7 @@ if ($isOwner && $nbParticipants > 0) {
             if ($question['type_question'] == 2) continue; // Ignorer separateurs
             if ($question['type_question'] == 0) continue; // Deja affiche dans le graphe
             $questionNum++;
-            $results = getResultsForQuestion($scrutin['id'], $question['id'], $question['type_question']);
+            $results = getResultsForQuestion($scrutin['id'], $question['id'], $question['type_question'], $nbMentions);
             if (!$results) continue;
         ?>
 
@@ -732,15 +752,16 @@ if ($isOwner && $nbParticipants > 0) {
             'titre' => $scrutin['titre'],
             'code' => $scrutin['code'],
             'nbParticipants' => $nbParticipants,
-            'dateExport' => date('Y-m-d H:i:s')
+            'dateExport' => date('Y-m-d H:i:s'),
+            'nbMentions' => $nbMentions
         ]); ?>,
         lotsData: <?php echo json_encode($lotsChartData); ?>,
-        mentions: <?php echo json_encode(array_column($mentions, 'libelle')); ?>,
+        mentions: <?php echo json_encode($mentions); ?>,
         otherResults: <?php
             $otherResults = [];
             foreach ($questions as $q) {
                 if ($q['type_question'] == 2 || $q['type_question'] == 0) continue;
-                $r = getResultsForQuestion($scrutin['id'], $q['id'], $q['type_question']);
+                $r = getResultsForQuestion($scrutin['id'], $q['id'], $q['type_question'], $nbMentions);
                 if ($r) {
                     $r['titre'] = $q['titre'];
                     $r['lot'] = intval($q['lot'] ?? 0);
@@ -764,26 +785,40 @@ if ($isOwner && $nbParticipants > 0) {
 
         // Resultats Vote Nuance par lot
         if (d.lotsData) {
+            // Construire l'en-tete dynamique selon les mentions
+            var mentionCodes = d.mentions.map(function(m) { return m.code; });
+            var headerMentions = mentionCodes.join(',');
+
+            // Colonnes de departage selon l'echelle
+            var departageHeader = '';
+            if (d.scrutin.nbMentions == 7) {
+                departageHeader = 'AP-AC,FP-FC,PP-PC,';
+            } else if (d.scrutin.nbMentions == 5) {
+                departageHeader = 'FP-FC,P-C,,';
+            } else {
+                departageHeader = 'P-C,,,';
+            }
+
             Object.keys(d.lotsData).forEach(function(lotNum) {
                 var lotData = d.lotsData[lotNum];
                 if (lotData.classement && lotData.classement.length > 0) {
                     var lotTitle = lotNum == 0 ? 'RESULTATS VOTE NUANCE' : 'RESULTATS VOTE NUANCE - LOT ' + lotNum;
                     csv += '=== ' + lotTitle + ' ===\n';
-                    csv += 'Rang,Question,Classement,AC,FC,PC,SA,PP,FP,AP,AP-AC,FP-FC,PP-PC,Total,Taux Partisans Net\n';
+                    csv += 'Rang,Question,Classement,' + headerMentions + ',' + departageHeader + 'Total,Taux Partisans Net\n';
 
                     lotData.classement.forEach(function(r, idx) {
-                        var counts = r.counts || {};
+                        var votesByCode = r.votesByCode || {};
                         var rank = lotData.ranks ? lotData.ranks[idx] : (idx + 1);
                         csv += rank + ',';
                         csv += '"' + (r.titre || '').replace(/"/g, '""') + '",';
                         csv += r.classement.toFixed(1) + ',';
-                        csv += (counts[1] || 0) + ',';
-                        csv += (counts[2] || 0) + ',';
-                        csv += (counts[3] || 0) + ',';
-                        csv += (counts[4] || 0) + ',';
-                        csv += (counts[5] || 0) + ',';
-                        csv += (counts[6] || 0) + ',';
-                        csv += (counts[7] || 0) + ',';
+
+                        // Ajouter les votes pour chaque mention
+                        d.mentions.forEach(function(m) {
+                            csv += (votesByCode[m.code] || 0) + ',';
+                        });
+
+                        // Departages
                         csv += (r.niveau1 || 0) + ',';
                         csv += (r.niveau2 || 0) + ',';
                         csv += (r.niveau3 || 0) + ',';

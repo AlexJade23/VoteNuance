@@ -5,6 +5,139 @@
 
 require_once 'config.php';
 
+// ============================================================================
+// ECHELLES DE MENTIONS (US-020)
+// ============================================================================
+
+/**
+ * Retourne les mentions pour une échelle donnée (3, 5 ou 7 mentions)
+ *
+ * @param int $nbMentions Nombre de mentions (3, 5 ou 7)
+ * @return array Tableau des mentions avec code, libelle, couleur, rang, est_partisan
+ */
+function getMentionsForScale($nbMentions = 7) {
+    // Définition complète des 7 mentions
+    $allMentions = [
+        ['code' => 'AC', 'libelle' => 'Absolument Contre', 'couleur' => '#D32F2F', 'rang' => 1, 'est_partisan' => -1],
+        ['code' => 'FC', 'libelle' => 'Franchement Contre', 'couleur' => '#F57C00', 'rang' => 2, 'est_partisan' => -1],
+        ['code' => 'PC', 'libelle' => 'Plutot Contre', 'couleur' => '#FBC02D', 'rang' => 3, 'est_partisan' => -1],
+        ['code' => 'SA', 'libelle' => 'Sans Avis', 'couleur' => '#9E9E9E', 'rang' => 4, 'est_partisan' => 0],
+        ['code' => 'PP', 'libelle' => 'Plutot Pour', 'couleur' => '#C0CA33', 'rang' => 5, 'est_partisan' => 1],
+        ['code' => 'FP', 'libelle' => 'Franchement Pour', 'couleur' => '#7CB342', 'rang' => 6, 'est_partisan' => 1],
+        ['code' => 'AP', 'libelle' => 'Absolument Pour', 'couleur' => '#388E3C', 'rang' => 7, 'est_partisan' => 1],
+    ];
+
+    switch ($nbMentions) {
+        case 3:
+            // 3 mentions : Contre / Sans Avis / Pour
+            return [
+                ['code' => 'C', 'libelle' => 'Contre', 'couleur' => '#D32F2F', 'rang' => 1, 'est_partisan' => -1],
+                ['code' => 'SA', 'libelle' => 'Sans Avis', 'couleur' => '#9E9E9E', 'rang' => 2, 'est_partisan' => 0],
+                ['code' => 'P', 'libelle' => 'Pour', 'couleur' => '#388E3C', 'rang' => 3, 'est_partisan' => 1],
+            ];
+
+        case 5:
+            // 5 mentions : FC / C / SA / P / FP (on retire AC et AP)
+            return [
+                ['code' => 'FC', 'libelle' => 'Franchement Contre', 'couleur' => '#F57C00', 'rang' => 1, 'est_partisan' => -1],
+                ['code' => 'C', 'libelle' => 'Contre', 'couleur' => '#FBC02D', 'rang' => 2, 'est_partisan' => -1],
+                ['code' => 'SA', 'libelle' => 'Sans Avis', 'couleur' => '#9E9E9E', 'rang' => 3, 'est_partisan' => 0],
+                ['code' => 'P', 'libelle' => 'Pour', 'couleur' => '#C0CA33', 'rang' => 4, 'est_partisan' => 1],
+                ['code' => 'FP', 'libelle' => 'Franchement Pour', 'couleur' => '#7CB342', 'rang' => 5, 'est_partisan' => 1],
+            ];
+
+        case 7:
+        default:
+            // 7 mentions : échelle complète
+            return $allMentions;
+    }
+}
+
+/**
+ * Retourne le libellé court de l'échelle
+ *
+ * @param int $nbMentions Nombre de mentions (3, 5 ou 7)
+ * @return string Description de l'échelle
+ */
+function getScaleLabel($nbMentions) {
+    switch ($nbMentions) {
+        case 3: return '3 mentions (Contre / Sans Avis / Pour)';
+        case 5: return '5 mentions (FC / C / SA / P / FP)';
+        case 7:
+        default: return '7 mentions (AC / FC / PC / SA / PP / FP / AP)';
+    }
+}
+
+/**
+ * Calcule le score Vote Nuance selon l'échelle
+ *
+ * Formules :
+ * - 3 mentions : P + (SA / 2)
+ * - 5 mentions : FP + P + (SA / 2)
+ * - 7 mentions : AP + FP + PP + (SA / 2)
+ *
+ * @param array $votes Tableau associatif code => nombre de votes
+ * @param int $nbMentions Nombre de mentions
+ * @return float Score calculé
+ */
+function calculateVoteNuanceScore($votes, $nbMentions = 7) {
+    $sa = $votes['SA'] ?? 0;
+
+    switch ($nbMentions) {
+        case 3:
+            $pour = $votes['P'] ?? 0;
+            return $pour + ($sa / 2);
+
+        case 5:
+            $fp = $votes['FP'] ?? 0;
+            $p = $votes['P'] ?? 0;
+            return $fp + $p + ($sa / 2);
+
+        case 7:
+        default:
+            $ap = $votes['AP'] ?? 0;
+            $fp = $votes['FP'] ?? 0;
+            $pp = $votes['PP'] ?? 0;
+            return $ap + $fp + $pp + ($sa / 2);
+    }
+}
+
+/**
+ * Calcule les niveaux de départage selon l'échelle
+ *
+ * @param array $votes Tableau associatif code => nombre de votes
+ * @param int $nbMentions Nombre de mentions
+ * @return array [niveau1, niveau2, niveau3] pour départage
+ */
+function calculateTiebreakers($votes, $nbMentions = 7) {
+    switch ($nbMentions) {
+        case 3:
+            // Un seul niveau : P - C
+            $p = $votes['P'] ?? 0;
+            $c = $votes['C'] ?? 0;
+            return [$p - $c, 0, 0];
+
+        case 5:
+            // Deux niveaux : FP-FC, P-C
+            $fp = $votes['FP'] ?? 0;
+            $fc = $votes['FC'] ?? 0;
+            $p = $votes['P'] ?? 0;
+            $c = $votes['C'] ?? 0;
+            return [$fp - $fc, $p - $c, 0];
+
+        case 7:
+        default:
+            // Trois niveaux : AP-AC, FP-FC, PP-PC
+            $ap = $votes['AP'] ?? 0;
+            $ac = $votes['AC'] ?? 0;
+            $fp = $votes['FP'] ?? 0;
+            $fc = $votes['FC'] ?? 0;
+            $pp = $votes['PP'] ?? 0;
+            $pc = $votes['PC'] ?? 0;
+            return [$ap - $ac, $fp - $fc, $pp - $pc];
+    }
+}
+
 /**
  * Connexion à la base de données
  */
@@ -258,8 +391,8 @@ function createScrutin($data) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('
         INSERT INTO scrutins (code, titre, resume, notice, image_url, debut_at, fin_at,
-            nb_participants_attendus, nb_gagnants, affiche_resultats, est_public, ordre_mentions, owner_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            nb_participants_attendus, nb_gagnants, affiche_resultats, est_public, ordre_mentions, nb_mentions, owner_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
         $data['code'],
@@ -274,6 +407,7 @@ function createScrutin($data) {
         $data['affiche_resultats'],
         $data['est_public'],
         $data['ordre_mentions'] ?? 0,
+        $data['nb_mentions'] ?? 7,
         $data['owner_id']
     ]);
     return $pdo->lastInsertId();
@@ -324,7 +458,7 @@ function updateScrutin($id, $data) {
     $stmt = $pdo->prepare('
         UPDATE scrutins SET
             titre = ?, resume = ?, notice = ?, image_url = ?, debut_at = ?, fin_at = ?,
-            nb_participants_attendus = ?, nb_gagnants = ?, affiche_resultats = ?, est_public = ?, ordre_mentions = ?
+            nb_participants_attendus = ?, nb_gagnants = ?, affiche_resultats = ?, est_public = ?, ordre_mentions = ?, nb_mentions = ?
         WHERE id = ?
     ');
     $stmt->execute([
@@ -339,6 +473,7 @@ function updateScrutin($id, $data) {
         $data['affiche_resultats'],
         $data['est_public'],
         $data['ordre_mentions'] ?? 0,
+        $data['nb_mentions'] ?? 7,
         $id
     ]);
 }

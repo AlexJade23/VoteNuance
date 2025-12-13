@@ -53,17 +53,14 @@ header('Content-Type: application/vnd.ms-excel');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Cache-Control: max-age=0');
 
-// Labels des mentions
-$mentionCodes = ['AC', 'FC', 'PC', 'SA', 'PP', 'FP', 'AP'];
-$mentionLabels = [
-    'AC' => 'Absolument Contre',
-    'FC' => 'Fortement Contre',
-    'PC' => 'Plutot Contre',
-    'SA' => 'Sans Avis',
-    'PP' => 'Plutot Pour',
-    'FP' => 'Fortement Pour',
-    'AP' => 'Absolument Pour'
-];
+// Labels des mentions selon l'echelle du scrutin
+$nbMentions = $scrutin['nb_mentions'] ?? 7;
+$mentionsList = getMentionsForScale($nbMentions);
+$mentionCodes = array_column($mentionsList, 'code');
+$mentionLabels = [];
+foreach ($mentionsList as $m) {
+    $mentionLabels[$m['code']] = $m['libelle'];
+}
 
 // Generer le XML Spreadsheet
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
@@ -93,6 +90,8 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
   <Style ss:ID="PC"><Interior ss:Color="#f5cccc" ss:Pattern="Solid"/></Style>
   <Style ss:ID="FC"><Interior ss:Color="#e68a8a" ss:Pattern="Solid"/></Style>
   <Style ss:ID="AC"><Interior ss:Color="#c0392b" ss:Pattern="Solid"/><Font ss:Color="#FFFFFF"/></Style>
+  <Style ss:ID="P"><Interior ss:Color="#388E3C" ss:Pattern="Solid"/><Font ss:Color="#FFFFFF"/></Style>
+  <Style ss:ID="C"><Interior ss:Color="#D32F2F" ss:Pattern="Solid"/><Font ss:Color="#FFFFFF"/></Style>
  </Styles>
 
  <!-- Onglet Resume -->
@@ -160,7 +159,8 @@ foreach ($questions as $q):
 <?php foreach ($mentionCodes as $code): ?>
     <Cell ss:StyleID="<?php echo $code; ?>"><Data ss:Type="Number"><?php echo intval($r[strtolower($code)] ?? 0); ?></Data></Cell>
 <?php endforeach; ?>
-    <Cell ss:Formula="=SUM(B<?php echo $rowNum; ?>:H<?php echo $rowNum; ?>)"><Data ss:Type="Number"></Data></Cell>
+<?php $lastCol = chr(ord('A') + count($mentionCodes)); ?>
+    <Cell ss:Formula="=SUM(B<?php echo $rowNum; ?>:<?php echo $lastCol; ?><?php echo $rowNum; ?>)"><Data ss:Type="Number"></Data></Cell>
    </Row>
 <?php
     endif;
@@ -170,6 +170,52 @@ endforeach;
  </Worksheet>
 
  <!-- Onglet Calculs avec FORMULES -->
+<?php
+// Determiner les colonnes selon l'echelle
+// 7 mentions: B=AC, C=FC, D=PC, E=SA, F=PP, G=FP, H=AP, I=Total
+// 5 mentions: B=FC, C=C, D=SA, E=P, F=FP, G=Total
+// 3 mentions: B=C, C=SA, D=P, E=Total
+$colMap = [];
+$colIdx = 'B';
+foreach ($mentionCodes as $code) {
+    $colMap[$code] = $colIdx;
+    $colIdx = chr(ord($colIdx) + 1);
+}
+$totalCol = $colIdx;
+
+// Construire les formules selon l'echelle
+$saCol = $colMap['SA'] ?? 'E';
+switch ($nbMentions) {
+    case 3:
+        $scoreFormula = function($row) use ($colMap, $saCol) {
+            return "='{$colMap['P']}{$row}+({$saCol}{$row}/2)";
+        };
+        $dep1Header = 'P-C';
+        $dep2Header = '';
+        $dep3Header = '';
+        $scoreLabel = 'P+SA/2';
+        break;
+    case 5:
+        $scoreFormula = function($row) use ($colMap, $saCol) {
+            return "='{$colMap['FP']}{$row}+'{$colMap['P']}{$row}+({$saCol}{$row}/2)";
+        };
+        $dep1Header = 'FP-FC';
+        $dep2Header = 'P-C';
+        $dep3Header = '';
+        $scoreLabel = 'FP+P+SA/2';
+        break;
+    case 7:
+    default:
+        $scoreFormula = function($row) use ($colMap, $saCol) {
+            return "='{$colMap['AP']}{$row}+'{$colMap['FP']}{$row}+'{$colMap['PP']}{$row}+({$saCol}{$row}/2)";
+        };
+        $dep1Header = 'AP-AC';
+        $dep2Header = 'FP-FC';
+        $dep3Header = 'PP-PC';
+        $scoreLabel = 'AP+FP+PP+SA/2';
+        break;
+}
+?>
  <Worksheet ss:Name="Calculs Vote Nuance">
   <Table>
    <Column ss:Width="300"/>
@@ -181,17 +227,17 @@ endforeach;
    <Row>
     <Cell ss:StyleID="Header"><Data ss:Type="String">Question</Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">Score</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">AP-AC</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">FP-FC</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">PP-PC</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String"><?php echo $dep1Header; ?></Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String"><?php echo $dep2Header; ?></Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String"><?php echo $dep3Header; ?></Data></Cell>
     <Cell ss:StyleID="Header"><Data ss:Type="String">Taux Net %</Data></Cell>
    </Row>
    <Row>
     <Cell ss:StyleID="Bold"><Data ss:Type="String">FORMULES UTILISEES :</Data></Cell>
-    <Cell><Data ss:Type="String">AP+FP+PP+SA/2</Data></Cell>
-    <Cell><Data ss:Type="String">AP-AC</Data></Cell>
-    <Cell><Data ss:Type="String">FP-FC</Data></Cell>
-    <Cell><Data ss:Type="String">PP-PC</Data></Cell>
+    <Cell><Data ss:Type="String"><?php echo $scoreLabel; ?></Data></Cell>
+    <Cell><Data ss:Type="String"><?php echo $dep1Header; ?></Data></Cell>
+    <Cell><Data ss:Type="String"><?php echo $dep2Header; ?></Data></Cell>
+    <Cell><Data ss:Type="String"><?php echo $dep3Header; ?></Data></Cell>
     <Cell><Data ss:Type="String">(Pour-Contre)/Total</Data></Cell>
    </Row>
 <?php
@@ -199,15 +245,35 @@ $calcRowNum = 2;
 foreach ($voteNuanceQuestions as $idx => $data):
     $calcRowNum++;
     $srcRow = $data['row'];
-    // Dans Votes bruts: B=AC, C=FC, D=PC, E=SA, F=PP, G=FP, H=AP, I=Total
+
+    // Formules de score et departage selon echelle
+    if ($nbMentions == 3) {
+        $scoreF = "='Votes bruts'!{$colMap['P']}{$srcRow}+('Votes bruts'!{$saCol}{$srcRow}/2)";
+        $dep1F = "='Votes bruts'!{$colMap['P']}{$srcRow}-'Votes bruts'!{$colMap['C']}{$srcRow}";
+        $dep2F = "=0";
+        $dep3F = "=0";
+        $tauxF = "=IF('Votes bruts'!{$totalCol}{$srcRow}=0,0,(('Votes bruts'!{$colMap['P']}{$srcRow}-'Votes bruts'!{$colMap['C']}{$srcRow})/'Votes bruts'!{$totalCol}{$srcRow})*100)";
+    } elseif ($nbMentions == 5) {
+        $scoreF = "='Votes bruts'!{$colMap['FP']}{$srcRow}+'Votes bruts'!{$colMap['P']}{$srcRow}+('Votes bruts'!{$saCol}{$srcRow}/2)";
+        $dep1F = "='Votes bruts'!{$colMap['FP']}{$srcRow}-'Votes bruts'!{$colMap['FC']}{$srcRow}";
+        $dep2F = "='Votes bruts'!{$colMap['P']}{$srcRow}-'Votes bruts'!{$colMap['C']}{$srcRow}";
+        $dep3F = "=0";
+        $tauxF = "=IF('Votes bruts'!{$totalCol}{$srcRow}=0,0,(('Votes bruts'!{$colMap['FP']}{$srcRow}+'Votes bruts'!{$colMap['P']}{$srcRow}-'Votes bruts'!{$colMap['FC']}{$srcRow}-'Votes bruts'!{$colMap['C']}{$srcRow})/'Votes bruts'!{$totalCol}{$srcRow})*100)";
+    } else { // 7 mentions
+        $scoreF = "='Votes bruts'!{$colMap['AP']}{$srcRow}+'Votes bruts'!{$colMap['FP']}{$srcRow}+'Votes bruts'!{$colMap['PP']}{$srcRow}+('Votes bruts'!{$saCol}{$srcRow}/2)";
+        $dep1F = "='Votes bruts'!{$colMap['AP']}{$srcRow}-'Votes bruts'!{$colMap['AC']}{$srcRow}";
+        $dep2F = "='Votes bruts'!{$colMap['FP']}{$srcRow}-'Votes bruts'!{$colMap['FC']}{$srcRow}";
+        $dep3F = "='Votes bruts'!{$colMap['PP']}{$srcRow}-'Votes bruts'!{$colMap['PC']}{$srcRow}";
+        $tauxF = "=IF('Votes bruts'!{$totalCol}{$srcRow}=0,0,(('Votes bruts'!{$colMap['AP']}{$srcRow}+'Votes bruts'!{$colMap['FP']}{$srcRow}+'Votes bruts'!{$colMap['PP']}{$srcRow}-'Votes bruts'!{$colMap['AC']}{$srcRow}-'Votes bruts'!{$colMap['FC']}{$srcRow}-'Votes bruts'!{$colMap['PC']}{$srcRow})/'Votes bruts'!{$totalCol}{$srcRow})*100)";
+    }
 ?>
    <Row>
     <Cell><Data ss:Type="String"><?php echo xmlEscape($data['question']['titre']); ?></Data></Cell>
-    <Cell ss:StyleID="Formula" ss:Formula="='Votes bruts'!H<?php echo $srcRow; ?>+'Votes bruts'!G<?php echo $srcRow; ?>+'Votes bruts'!F<?php echo $srcRow; ?>+('Votes bruts'!E<?php echo $srcRow; ?>/2)"><Data ss:Type="Number"></Data></Cell>
-    <Cell ss:StyleID="Formula" ss:Formula="='Votes bruts'!H<?php echo $srcRow; ?>-'Votes bruts'!B<?php echo $srcRow; ?>"><Data ss:Type="Number"></Data></Cell>
-    <Cell ss:StyleID="Formula" ss:Formula="='Votes bruts'!G<?php echo $srcRow; ?>-'Votes bruts'!C<?php echo $srcRow; ?>"><Data ss:Type="Number"></Data></Cell>
-    <Cell ss:StyleID="Formula" ss:Formula="='Votes bruts'!F<?php echo $srcRow; ?>-'Votes bruts'!D<?php echo $srcRow; ?>"><Data ss:Type="Number"></Data></Cell>
-    <Cell ss:StyleID="Formula" ss:Formula="=IF('Votes bruts'!I<?php echo $srcRow; ?>=0,0,(('Votes bruts'!H<?php echo $srcRow; ?>+'Votes bruts'!G<?php echo $srcRow; ?>+'Votes bruts'!F<?php echo $srcRow; ?>-'Votes bruts'!B<?php echo $srcRow; ?>-'Votes bruts'!C<?php echo $srcRow; ?>-'Votes bruts'!D<?php echo $srcRow; ?>)/'Votes bruts'!I<?php echo $srcRow; ?>)*100)"><Data ss:Type="Number"></Data></Cell>
+    <Cell ss:StyleID="Formula" ss:Formula="<?php echo $scoreF; ?>"><Data ss:Type="Number"></Data></Cell>
+    <Cell ss:StyleID="Formula" ss:Formula="<?php echo $dep1F; ?>"><Data ss:Type="Number"></Data></Cell>
+    <Cell ss:StyleID="Formula" ss:Formula="<?php echo $dep2F; ?>"><Data ss:Type="Number"></Data></Cell>
+    <Cell ss:StyleID="Formula" ss:Formula="<?php echo $dep3F; ?>"><Data ss:Type="Number"></Data></Cell>
+    <Cell ss:StyleID="Formula" ss:Formula="<?php echo $tauxF; ?>"><Data ss:Type="Number"></Data></Cell>
    </Row>
 <?php endforeach; ?>
   </Table>
