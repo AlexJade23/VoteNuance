@@ -906,9 +906,11 @@ $typeLabels = [
                 margin: 15mm;
             }
         }
+        <?php echo getTestBannerCSS(); ?>
     </style>
 </head>
 <body>
+<?php echo renderTestBanner(); ?>
     <div class="container">
         <div class="header">
             <?php if (!empty($scrutin['image_url'])): ?>

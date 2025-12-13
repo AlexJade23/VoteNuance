@@ -180,9 +180,11 @@ $csrfToken = generateCsrfToken();
             font-size: 12px;
             color: #999;
         }
+        <?php echo getTestBannerCSS(); ?>
     </style>
 </head>
 <body>
+<?php echo renderTestBanner(); ?>
     <div class="container">
         <div style="text-align: center; margin-bottom: 25px;">
             <a href="https://decision-collective.fr/" target="_blank" title="Découvrir le concept">
