@@ -1,43 +1,70 @@
 <?php
 /**
- * Configuration SSO Google + Microsoft - EXEMPLE
- * 
+ * Configuration VoteNuance - EXEMPLE
+ *
  * Copiez ce fichier en config.php et remplissez vos propres valeurs.
- * Ne commitez JAMAIS config.php dans votre dépôt Git !
+ * Ne commitez JAMAIS config.php dans votre depot Git !
  */
 
-// Configuration base de données
+// ============================================================================
+// CONFIGURATION ENVIRONNEMENT
+// ============================================================================
+// Mettre a true pour l'environnement de test, false pour la production
+define('IS_TEST_ENV', false);
+
+// ============================================================================
+// BASE DE DONNEES
+// ============================================================================
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'votre_base');
+define('DB_NAME', 'votre_base');          // ex: deco_prod ou deco_test
 define('DB_USER', 'votre_user');
 define('DB_PASS', 'votre_password');
 
-// Configuration Google OAuth
+// ============================================================================
+// GOOGLE OAUTH
+// ============================================================================
 // Obtenir depuis : https://console.cloud.google.com
 define('GOOGLE_CLIENT_ID', 'VOTRE_CLIENT_ID.apps.googleusercontent.com');
 define('GOOGLE_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET');
 define('GOOGLE_REDIRECT_URI', 'https://votresite.com/callback.php');
 
-// Configuration Microsoft OAuth
+// ============================================================================
+// MICROSOFT OAUTH
+// ============================================================================
 // Obtenir depuis : https://portal.azure.com
 define('MICROSOFT_CLIENT_ID', 'VOTRE_CLIENT_ID_MICROSOFT');
 define('MICROSOFT_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET_MICROSOFT');
 define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
 define('MICROSOFT_TENANT', 'common'); // 'common' pour comptes personnels et professionnels
 
+// ============================================================================
+// STRIPE (Paiement)
+// ============================================================================
+// Obtenir depuis : https://dashboard.stripe.com/apikeys
+// ATTENTION : Utiliser les cles de TEST (pk_test_ / sk_test_) pour l'env de test
+//             et les cles LIVE (pk_live_ / sk_live_) pour la production
+define('STRIPE_PUBLIC_KEY', 'pk_live_VOTRE_CLE_PUBLIQUE');
+define('STRIPE_SECRET_KEY', 'sk_live_VOTRE_CLE_SECRETE');
+define('STRIPE_WEBHOOK_SECRET', 'whsec_VOTRE_SECRET_WEBHOOK');
+define('STRIPE_PRICE_PER_TOKEN_CENTS', 100); // 1 EUR = 100 centimes par jeton
+
+// ============================================================================
 // URLs OAuth (ne pas modifier)
+// ============================================================================
 define('GOOGLE_AUTH_URL', 'https://accounts.google.com/o/oauth2/v2/auth');
 define('GOOGLE_TOKEN_URL', 'https://oauth2.googleapis.com/token');
 
 define('MICROSOFT_AUTH_URL', 'https://login.microsoftonline.com/' . MICROSOFT_TENANT . '/oauth2/v2.0/authorize');
 define('MICROSOFT_TOKEN_URL', 'https://login.microsoftonline.com/' . MICROSOFT_TENANT . '/oauth2/v2.0/token');
 
+// ============================================================================
 // Configuration session
+// ============================================================================
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', 1); // HTTPS uniquement
 ini_set('session.cookie_samesite', 'Lax');
 
-// Démarrer la session si pas déjà fait
+// Demarrer la session si pas deja fait
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
