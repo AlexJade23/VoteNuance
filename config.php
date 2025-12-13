@@ -2,32 +2,43 @@
 /**
  * Configuration SSO Google + Microsoft
  * Authentification minimaliste avec respect de la vie privée
+ *
+ * ENVIRONNEMENT : TEST (tst.de-co.fr)
  */
 
+// ============================================================================
+// CONFIGURATION ENVIRONNEMENT TEST
+// ============================================================================
+define('IS_TEST_ENV', true);
+define('TEST_BRANCH', 'feature/us-020-echelles-flexibles');
+define('TEST_SITE_URL', 'https://tst.de-co.fr');
+
 // Charger les secrets depuis un fichier hors de la racine web
-$secretFile = __DIR__ . '/../secret/sso.php';
+// En TEST : sso-test.php
+$secretFile = __DIR__ . '/../secret/sso-test.php';
 if (file_exists($secretFile)) {
     require_once $secretFile;
 }
 
 // Configuration base de données (valeurs par défaut si secrets non chargés)
 if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
-if (!defined('DB_NAME')) define('DB_NAME', 'votre_base');
+if (!defined('DB_NAME')) define('DB_NAME', 'deco_test');
 if (!defined('DB_USER')) define('DB_USER', 'votre_user');
 if (!defined('DB_PASS')) define('DB_PASS', 'votre_password');
 
 // Configuration Google OAuth (valeurs par défaut si secrets non chargés)
 if (!defined('GOOGLE_CLIENT_ID')) define('GOOGLE_CLIENT_ID', 'VOTRE_CLIENT_ID_GOOGLE.apps.googleusercontent.com');
 if (!defined('GOOGLE_CLIENT_SECRET')) define('GOOGLE_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET_GOOGLE');
-if (!defined('GOOGLE_REDIRECT_URI')) define('GOOGLE_REDIRECT_URI', 'https://votresite.com/callback.php');
+if (!defined('GOOGLE_REDIRECT_URI')) define('GOOGLE_REDIRECT_URI', 'https://tst.de-co.fr/callback.php');
 
 // Configuration Microsoft OAuth (valeurs par défaut si secrets non chargés)
 if (!defined('MICROSOFT_CLIENT_ID')) define('MICROSOFT_CLIENT_ID', 'VOTRE_CLIENT_ID_MICROSOFT');
 if (!defined('MICROSOFT_CLIENT_SECRET')) define('MICROSOFT_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET_MICROSOFT');
-if (!defined('MICROSOFT_REDIRECT_URI')) define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
+if (!defined('MICROSOFT_REDIRECT_URI')) define('MICROSOFT_REDIRECT_URI', 'https://tst.de-co.fr/callback.php');
 if (!defined('MICROSOFT_TENANT')) define('MICROSOFT_TENANT', 'common'); // 'common' pour comptes personnels et professionnels
 
 // Configuration Stripe (valeurs par défaut si secrets non chargés)
+// En TEST : utiliser les clés Stripe de test (pk_test_ / sk_test_)
 if (!defined('STRIPE_PUBLIC_KEY')) define('STRIPE_PUBLIC_KEY', 'pk_test_VOTRE_CLE_PUBLIQUE');
 if (!defined('STRIPE_SECRET_KEY')) define('STRIPE_SECRET_KEY', 'sk_test_VOTRE_CLE_SECRETE');
 if (!defined('STRIPE_WEBHOOK_SECRET')) define('STRIPE_WEBHOOK_SECRET', 'whsec_VOTRE_SECRET_WEBHOOK');

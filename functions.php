@@ -543,13 +543,87 @@ function getMentionsByEchelle($echelleId = 1) {
 // ============================================================================
 
 /**
+ * Afficher la bannière d'environnement de test
+ * Cette bannière est visible uniquement sur l'environnement de test
+ */
+function renderTestBanner() {
+    if (!defined('IS_TEST_ENV') || IS_TEST_ENV !== true) {
+        return '';
+    }
+
+    $branch = defined('TEST_BRANCH') ? TEST_BRANCH : 'test';
+    $siteUrl = defined('TEST_SITE_URL') ? TEST_SITE_URL : 'tst.de-co.fr';
+
+    return '
+    <div class="test-banner">
+        <span class="test-banner-icon">⚠️</span>
+        <span class="test-banner-text">
+            <strong>ENVIRONNEMENT DE TEST</strong> - ' . htmlspecialchars($siteUrl) . ' - Branche: ' . htmlspecialchars($branch) . '
+        </span>
+        <span class="test-banner-warning">Les données ici ne sont PAS en production</span>
+    </div>';
+}
+
+/**
+ * CSS pour la bannière de test
+ */
+function getTestBannerCSS() {
+    if (!defined('IS_TEST_ENV') || IS_TEST_ENV !== true) {
+        return '';
+    }
+
+    return '
+    .test-banner {
+        background: linear-gradient(135deg, #ff6b35, #f7931e);
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        font-size: 14px;
+        position: sticky;
+        top: 0;
+        z-index: 1001;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    .test-banner-icon {
+        font-size: 20px;
+    }
+    .test-banner-text {
+        font-weight: 500;
+    }
+    .test-banner-warning {
+        background: rgba(0,0,0,0.2);
+        padding: 3px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    @media (max-width: 600px) {
+        .test-banner {
+            flex-direction: column;
+            gap: 5px;
+            padding: 8px 10px;
+        }
+        .test-banner-text {
+            font-size: 12px;
+        }
+    }
+    ';
+}
+
+/**
  * Afficher le menu de navigation unifié
  */
 function renderNavigation($activePage = '') {
     $isLoggedIn = isLoggedIn();
     $user = $isLoggedIn ? getCurrentUser() : null;
 
-    $html = '<nav class="main-nav">';
+    // Ajouter la bannière de test si applicable
+    $html = renderTestBanner();
+    $html .= '<nav class="main-nav">';
     $html .= '<div class="nav-container">';
     $html .= '<a href="https://decision-collective.fr/" class="nav-brand" target="_blank" title="Découvrir le concept">';
     $html .= '<img src="https://decision-collective.fr/wp-content/uploads/2021/12/logov7long.png" alt="Décision Collective" class="nav-logo">';
@@ -576,12 +650,13 @@ function renderNavigation($activePage = '') {
  * CSS pour le menu de navigation
  */
 function getNavigationCSS() {
-    return '
+    $topOffset = (defined('IS_TEST_ENV') && IS_TEST_ENV === true) ? '44px' : '0';
+    return getTestBannerCSS() . '
     .main-nav {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 0 20px;
         position: sticky;
-        top: 0;
+        top: ' . $topOffset . ';
         z-index: 1000;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
