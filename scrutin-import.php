@@ -27,11 +27,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Confirmation de l'import depuis les donnees de session
         if (isset($_SESSION['import_preview'])) {
             $data = $_SESSION['import_preview'];
-            unset($_SESSION['import_preview']);
+
+            // Traitement du code URL
+            $code = trim($_POST['code'] ?? '');
+
+            if (empty($code)) {
+                // Cas 3: champ vide -> generation automatique
+                $newCode = generateScrutinCode();
+            } else {
+                // Validation du format
+                if (!preg_match('/^[a-z0-9\-]+$/', $code)) {
+                    $errors[] = 'Le code ne peut contenir que des lettres minuscules, chiffres et tirets';
+                    // Garder les donnees en session pour retry
+                    $preview = $data;
+                } elseif (scrutinCodeExists($code)) {
+                    // Cas 4: code deja pris
+                    $errors[] = 'Ce code est deja utilise. Veuillez en choisir un autre.';
+                    $preview = $data;
+                } else {
+                    // Cas 1 & 2: code valide
+                    $newCode = $code;
+                }
+            }
+
+            // Si pas d'erreur, continuer la creation
+            if (empty($errors)) {
+                unset($_SESSION['import_preview']);
 
             try {
                 // Creer le scrutin
-                $newCode = generateScrutinCode();
                 $scrutinId = createScrutin([
                     'code' => $newCode,
                     'titre' => $data['scrutin']['titre'] . ' (copie)',
@@ -76,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Exception $e) {
                 $errors[] = 'Erreur lors de la creation : ' . $e->getMessage();
             }
+            } // Fin if (empty($errors))
         } else {
             $errors[] = 'Donnees d\'import expirees. Veuillez recommencer.';
         }
@@ -148,6 +173,7 @@ function parseXmlSpreadsheet($content) {
 
                     switch ($field) {
                         case 'titre': $result['scrutin']['titre'] = $value; break;
+                        case 'code': $result['scrutin']['code'] = $value; break;
                         case 'resume': $result['scrutin']['resume'] = $value; break;
                         case 'notice': $result['scrutin']['notice'] = $value; break;
                         case 'image url': $result['scrutin']['image_url'] = $value; break;
@@ -356,15 +382,29 @@ function parseXmlSpreadsheet($content) {
                 <?php endforeach; ?>
             </div>
 
-            <div class="alert alert-info" style="margin-top: 20px;">
-                Un nouveau scrutin sera cree avec un nouveau code. Les dates de debut/fin seront reinitialises.
-            </div>
-
-            <form method="POST" class="form-actions">
+            <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                 <input type="hidden" name="action" value="confirm">
-                <a href="/scrutin-import.php" class="btn btn-secondary">Annuler</a>
-                <button type="submit" class="btn btn-success">Confirmer l'import</button>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label for="code">Code URL <small>(laissez vide pour generation automatique)</small></label>
+                    <input type="text" id="code" name="code"
+                           value="<?php echo htmlspecialchars($preview['scrutin']['code'] ?? ''); ?>"
+                           placeholder="ex: mon-scrutin-2024" pattern="[a-z0-9\-]*"
+                           style="max-width: 400px;">
+                    <small style="display: block; margin-top: 5px; color: #666;">
+                        Lettres minuscules, chiffres et tirets uniquement. Ce code definit l'URL d'acces au scrutin.
+                    </small>
+                </div>
+
+                <div class="alert alert-info" style="margin-top: 20px;">
+                    Les dates de debut/fin seront reinitialises.
+                </div>
+
+                <div class="form-actions">
+                    <a href="/scrutin-import.php" class="btn btn-secondary">Annuler</a>
+                    <button type="submit" class="btn btn-success">Confirmer l'import</button>
+                </div>
             </form>
         </div>
 
