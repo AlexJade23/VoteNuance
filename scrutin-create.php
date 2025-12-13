@@ -779,7 +779,7 @@ $csrfToken = generateCsrfToken();
                     <div class="form-group">
                         <label>Type</label>
                         <select name="questions[${index}][type]" onchange="updateQuestionType(this)">
-                            <option value="0" ${type == 0 ? 'selected' : ''}>Vote nuancé (7 mentions)</option>
+                            <option value="0" ${type == 0 ? 'selected' : ''}>Vote nuancé</option>
                             <option value="1" ${type == 1 ? 'selected' : ''}>Réponse ouverte</option>
                             <option value="2" ${type == 2 ? 'selected' : ''}>Séparateur (titre seul)</option>
                             <option value="3" ${type == 3 ? 'selected' : ''}>Préféré du lot</option>

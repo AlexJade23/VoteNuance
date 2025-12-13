@@ -397,26 +397,28 @@ $typeLabels = [
 
         /* Vote nuancé */
         .mentions-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
             gap: 8px;
             margin-top: 15px;
         }
 
+        .mention-option {
+            width: 90px;
+            height: 90px;
+        }
+
         @media (max-width: 600px), (orientation: portrait) {
             .mentions-grid {
-                grid-template-columns: 1fr;
+                flex-direction: column;
+                align-items: stretch;
                 gap: 6px;
             }
-        }
 
-        .mention-option {
-            aspect-ratio: 1 / 1;
-        }
-
-        @media (max-width: 600px), (orientation: portrait) {
             .mention-option {
-                aspect-ratio: auto;
+                width: 100%;
+                height: auto;
             }
         }
 
