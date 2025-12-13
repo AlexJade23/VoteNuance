@@ -25,7 +25,11 @@ Permettre des consultations democratiques avec une methode de vote plus expressi
 
 Le Vote Nuance prend en compte **tous les votants ayant un avis**, contrairement au Jugement Majoritaire qui utilise la mediane et peut ignorer les votes dès que la mediane est depassee, soit un peu moins de la moitie des votes.
 
-## Echelle de vote
+## Echelles de vote
+
+Le Vote Nuance propose 3 echelles au choix (configurable par scrutin) :
+
+### Echelle 7 mentions (par defaut)
 
 | Mention | Code | Couleur |
 |---------|------|---------|
@@ -37,10 +41,30 @@ Le Vote Nuance prend en compte **tous les votants ayant un avis**, contrairement
 | Franchement Pour | FP | #7CB342 |
 | Absolument Pour | AP | #388E3C |
 
-### Calcul du classement
+### Echelle 5 mentions
+
+| Mention | Code | Couleur |
+|---------|------|---------|
+| Franchement Contre | FC | #F57C00 |
+| Contre | C | #FBC02D |
+| Sans Avis | SA | #9E9E9E |
+| Pour | P | #C0CA33 |
+| Franchement Pour | FP | #7CB342 |
+
+### Echelle 3 mentions
+
+| Mention | Code | Couleur |
+|---------|------|---------|
+| Contre | C | #F57C00 |
+| Sans Avis | SA | #9E9E9E |
+| Pour | P | #7CB342 |
+
+### Calcul du classement (adapte selon l'echelle)
 
 ```
-Classement = AP + FP + PP + (SA / 2)
+7 mentions : Classement = AP + FP + PP + (SA / 2)
+5 mentions : Classement = FP + P + (SA / 2)
+3 mentions : Classement = P + (SA / 2)
 ```
 
 En cas d'egalite, departage par cascade :
@@ -149,6 +173,19 @@ mysql -u root -p < database.schema.sql
 ```
 
 ### 2. Configuration des secrets
+
+Les secrets sont stockes dans un dossier cousin `../secret/` hors du depot Git :
+
+```
+de-co/
+├── secret/           # Dossier hors Git (cree manuellement)
+│   ├── sso.php       # Secrets production
+│   └── sso-test.php  # Secrets test
+├── VoteNuance/       # Depot Git (production)
+│   └── config.php    # Charge ../secret/sso.php
+└── VoteNuance-test/  # Depot Git (test)
+    └── config.php    # Charge ../secret/sso-test.php
+```
 
 Creer un fichier `../secret/sso.php` (hors racine web) :
 
@@ -270,6 +307,7 @@ chmod 755 uploads
 - [x] Option "Afficher resultats avant cloture"
 - [x] Option "Scrutin public" (sans connexion requise)
 - [x] Ordre des mentions configurable (Pour->Contre ou Contre->Pour)
+- [x] Echelles flexibles : choix de 3, 5 ou 7 mentions par scrutin
 - [x] Archivage des scrutins (protection contre modification si votes)
 - [x] Gestion des lots avec melange aleatoire (anti-biais d'ordre)
 - [x] Conservation des questions saisies en cas d'erreur de validation
@@ -380,6 +418,7 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - Separation stricte vote/votant
 - Validation MIME type pour uploads
 - Noms de fichiers aleatoires (pas de path traversal)
+- config.php dans .gitignore (jamais versionne)
 
 ## Conformite RGPD
 
@@ -425,9 +464,9 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - [x] UX scrutins prives : alertes et rappels pour generer des jetons (US-015)
 - [x] Export/Import XLS scrutins et votes (US-016 a US-019)
 - [x] Graphique evolution de la participation dans le temps (US-014)
+- [x] Echelles flexibles 3/5/7 mentions au niveau scrutin (US-020)
 
 ### A venir
-- [ ] Echelles flexibles 3/5/7 mentions (US-020, priorite moyenne)
 - [ ] Emails de notification (priorite basse)
 - [ ] Mode sombre (priorite basse)
 - [ ] Drag & drop et compression images (priorite basse)

@@ -309,33 +309,33 @@
 ## Epic 8 : Flexibilite des echelles de vote
 
 ### US-020 : Centralisation du nombre de mentions par scrutin
-**Statut** : A faire | **Priorite** : Moyenne | **Estimation** : L
+**Statut** : Done | **Priorite** : Moyenne | **Estimation** : L
 
 **En tant que** organisateur de scrutin
 **Je veux** choisir le nombre de mentions (3, 5 ou 7) au niveau du scrutin
 **Afin de** simplifier la configuration et garantir la coherence entre toutes les questions
 
 #### Criteres d'acceptation
-- [ ] Choix du nombre de mentions a la creation du scrutin (defaut : 7)
-- [ ] Toutes les questions Vote Nuance du scrutin utilisent la meme echelle
-- [ ] 3 echelles disponibles :
+- [x] Choix du nombre de mentions a la creation du scrutin (defaut : 7)
+- [x] Toutes les questions Vote Nuance du scrutin utilisent la meme echelle
+- [x] 3 echelles disponibles :
   - 3 mentions : Contre / Sans Avis / Pour
   - 5 mentions : Franchement Contre / Contre / Sans Avis / Pour / Franchement Pour
   - 7 mentions : AC / FC / PC / SA / PP / FP / AP (actuel)
-- [ ] Interface de vote adaptee au nombre de mentions
-- [ ] Graphiques resultats adaptes (couleurs et labels)
-- [ ] Export CSV/XLS adapte au nombre de mentions
-- [ ] Scrutins existants (7 mentions) non impactes
+- [x] Interface de vote adaptee au nombre de mentions
+- [x] Graphiques resultats adaptes (couleurs et labels)
+- [x] Export CSV/XLS adapte au nombre de mentions
+- [x] Scrutins existants (7 mentions) non impactes
 
 #### Taches techniques
-- [ ] Ajouter colonne `nb_mentions` (TINYINT DEFAULT 7) dans table `scrutins`
-- [ ] Migration SQL (Migration 004)
-- [ ] Modifier scrutin-create.php : select pour choisir 3/5/7 mentions
-- [ ] Modifier scrutin-edit.php : afficher le nombre de mentions (non modifiable si votes)
-- [ ] Modifier vote.php : afficher uniquement les mentions de l'echelle choisie
-- [ ] Modifier scrutin-results.php : adapter graphiques et calculs
-- [ ] Modifier functions.php : fonction getMentionsForScale($nb) retournant les mentions
-- [ ] Adapter exports CSV/XLS au nombre de mentions
+- [x] Ajouter colonne `nb_mentions` (TINYINT DEFAULT 7) dans table `scrutins`
+- [x] Migration SQL (Migration 004)
+- [x] Modifier scrutin-create.php : select pour choisir 3/5/7 mentions
+- [x] Modifier scrutin-edit.php : afficher le nombre de mentions (non modifiable si votes)
+- [x] Modifier vote.php : afficher uniquement les mentions de l'echelle choisie
+- [x] Modifier scrutin-results.php : adapter graphiques et calculs
+- [x] Modifier functions.php : fonction getMentionsForScale($nb) retournant les mentions
+- [x] Adapter exports CSV/XLS au nombre de mentions
 
 #### Calcul Vote Nuance adapte par echelle
 
@@ -366,7 +366,7 @@
 
 ## Resume par statut
 
-### Done (14 US)
+### Done (15 US)
 - US-001 : Verification jeton scrutin prive
 - US-002 : Generation de jetons par l'organisateur
 - US-003 : Suivi des jetons distribues
@@ -380,11 +380,11 @@
 - US-017 : Import scrutin depuis XLS
 - US-018 : Export votes en XLS avec formules
 - US-019 : Import votes depuis XLS
+- US-020 : Echelles flexibles (3/5/7 mentions)
 
-### A faire (7 US)
+### A faire (6 US)
 | US | Description | Priorite | Estimation |
 |----|-------------|----------|------------|
-| US-020 | Echelles flexibles (3/5/7 mentions) | Moyenne | L |
 | US-007 | Email de confirmation de vote | Basse | M |
 | US-008 | Email notification nouveaux resultats | Basse | S |
 | US-009 | Drag & drop upload images | Basse | S |
