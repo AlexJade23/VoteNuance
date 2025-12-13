@@ -2,51 +2,56 @@
 /**
  * Configuration VoteNuance - EXEMPLE
  *
- * Copiez ce fichier en config.php et remplissez vos propres valeurs.
- * Ne commitez JAMAIS config.php dans votre depot Git !
+ * ARCHITECTURE DES SECRETS
+ * ========================
+ * Les credentials (BDD, OAuth, Stripe, FTP) ne sont PAS dans ce repo.
+ * Ils doivent etre places dans un dossier "secret/" COUSIN de ce repo :
+ *
+ *   /votre/serveur/
+ *   ├── VoteNuance/           <- Ce repo (production)
+ *   │   └── config.php        <- Charge ../secret/sso.php
+ *   │
+ *   ├── VoteNuance-test/      <- Ce repo (test)
+ *   │   └── config.php        <- Charge ../secret/sso-test.php
+ *   │
+ *   └── secret/               <- Dossier HORS GIT (a creer manuellement)
+ *       ├── sso.php           <- Credentials production
+ *       ├── sso-test.php      <- Credentials test
+ *       ├── ftp.sh            <- Credentials FTP production
+ *       └── ftp-test.sh       <- Credentials FTP test
+ *
+ * INSTALLATION
+ * ============
+ * 1. Creez le dossier "secret/" au meme niveau que ce repo
+ * 2. Creez les fichiers sso.php et sso-test.php avec vos credentials
+ * 3. Copiez ce fichier en config.php et adaptez IS_TEST_ENV
+ *
+ * IMPORTANT : Ne commitez JAMAIS config.php ni le dossier secret/ !
  */
 
 // ============================================================================
-// CONFIGURATION ENVIRONNEMENT
+// ENVIRONNEMENT
 // ============================================================================
-// Mettre a true pour l'environnement de test, false pour la production
+// Production : false | Test : true
 define('IS_TEST_ENV', false);
 
-// ============================================================================
-// BASE DE DONNEES
-// ============================================================================
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'votre_base');          // ex: deco_prod ou deco_test
-define('DB_USER', 'votre_user');
-define('DB_PASS', 'votre_password');
+// Pour l'environnement de test uniquement :
+// define('TEST_BRANCH', 'feature/ma-branche');
 
 // ============================================================================
-// GOOGLE OAUTH
+// CHARGEMENT DES SECRETS
 // ============================================================================
-// Obtenir depuis : https://console.cloud.google.com
-define('GOOGLE_CLIENT_ID', 'VOTRE_CLIENT_ID.apps.googleusercontent.com');
-define('GOOGLE_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET');
-define('GOOGLE_REDIRECT_URI', 'https://votresite.com/callback.php');
+// Production : ../secret/sso.php
+// Test : ../secret/sso-test.php
+$secretFile = IS_TEST_ENV
+    ? __DIR__ . '/../secret/sso-test.php'
+    : __DIR__ . '/../secret/sso.php';
 
-// ============================================================================
-// MICROSOFT OAUTH
-// ============================================================================
-// Obtenir depuis : https://portal.azure.com
-define('MICROSOFT_CLIENT_ID', 'VOTRE_CLIENT_ID_MICROSOFT');
-define('MICROSOFT_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET_MICROSOFT');
-define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
-define('MICROSOFT_TENANT', 'common'); // 'common' pour comptes personnels et professionnels
-
-// ============================================================================
-// STRIPE (Paiement)
-// ============================================================================
-// Obtenir depuis : https://dashboard.stripe.com/apikeys
-// ATTENTION : Utiliser les cles de TEST (pk_test_ / sk_test_) pour l'env de test
-//             et les cles LIVE (pk_live_ / sk_live_) pour la production
-define('STRIPE_PUBLIC_KEY', 'pk_live_VOTRE_CLE_PUBLIQUE');
-define('STRIPE_SECRET_KEY', 'sk_live_VOTRE_CLE_SECRETE');
-define('STRIPE_WEBHOOK_SECRET', 'whsec_VOTRE_SECRET_WEBHOOK');
-define('STRIPE_PRICE_PER_TOKEN_CENTS', 100); // 1 EUR = 100 centimes par jeton
+if (file_exists($secretFile)) {
+    require_once $secretFile;
+} else {
+    die('Erreur: fichier de secrets non trouve: ' . $secretFile);
+}
 
 // ============================================================================
 // URLs OAuth (ne pas modifier)
@@ -64,7 +69,38 @@ ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', 1); // HTTPS uniquement
 ini_set('session.cookie_samesite', 'Lax');
 
-// Demarrer la session si pas deja fait
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+/**
+ * ============================================================================
+ * TEMPLATE POUR secret/sso.php (ou sso-test.php)
+ * ============================================================================
+ * Creez ce fichier dans ../secret/sso.php avec vos vraies valeurs :
+ *
+ * <?php
+ * // Base de donnees
+ * define('DB_HOST', 'localhost');
+ * define('DB_NAME', 'votre_base');
+ * define('DB_USER', 'votre_user');
+ * define('DB_PASS', 'votre_password');
+ *
+ * // Google OAuth (https://console.cloud.google.com)
+ * define('GOOGLE_CLIENT_ID', 'xxx.apps.googleusercontent.com');
+ * define('GOOGLE_CLIENT_SECRET', 'xxx');
+ * define('GOOGLE_REDIRECT_URI', 'https://votresite.com/callback.php');
+ *
+ * // Microsoft OAuth (https://portal.azure.com)
+ * define('MICROSOFT_CLIENT_ID', 'xxx');
+ * define('MICROSOFT_CLIENT_SECRET', 'xxx');
+ * define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
+ * define('MICROSOFT_TENANT', 'common');
+ *
+ * // Stripe (https://dashboard.stripe.com/apikeys)
+ * // Production: pk_live_ / sk_live_ | Test: pk_test_ / sk_test_
+ * define('STRIPE_PUBLIC_KEY', 'pk_xxx');
+ * define('STRIPE_SECRET_KEY', 'sk_xxx');
+ * define('STRIPE_WEBHOOK_SECRET', 'whsec_xxx');
+ * define('STRIPE_PRICE_PER_TOKEN_CENTS', 100);
+ */
