@@ -16,7 +16,10 @@ if (!$scrutin) {
 }
 
 $questions = getQuestionsByScrutin($scrutin['id']);
-$mentions = getMentionsByEchelle(1);
+
+// Récupérer les mentions selon l'échelle du scrutin (3, 5 ou 7 mentions)
+$nbMentions = $scrutin['nb_mentions'] ?? 7;
+$mentions = getMentionsForScale($nbMentions);
 
 // Mélanger aléatoirement les questions appartenant à un même lot
 // Les questions avec lot=0 gardent leur position d'origine
@@ -394,26 +397,28 @@ $typeLabels = [
 
         /* Vote nuancé */
         .mentions-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
             gap: 8px;
             margin-top: 15px;
         }
 
+        .mention-option {
+            width: 90px;
+            height: 90px;
+        }
+
         @media (max-width: 600px), (orientation: portrait) {
             .mentions-grid {
-                grid-template-columns: 1fr;
+                flex-direction: column;
+                align-items: stretch;
                 gap: 6px;
             }
-        }
 
-        .mention-option {
-            aspect-ratio: 1 / 1;
-        }
-
-        @media (max-width: 600px), (orientation: portrait) {
             .mention-option {
-                aspect-ratio: auto;
+                width: 100%;
+                height: auto;
             }
         }
 
@@ -1083,7 +1088,7 @@ $typeLabels = [
                         <input type="radio" name="vote[<?php echo $question['id']; ?>]"
                                id="q<?php echo $question['id']; ?>_m<?php echo $mention['rang']; ?>"
                                value="<?php echo $mention['rang']; ?>"
-                               <?php echo ($mention['rang'] == 4) ? 'checked' : ''; ?>>
+                               <?php echo ($mention['code'] == 'SA') ? 'checked' : ''; ?>>
                         <label for="q<?php echo $question['id']; ?>_m<?php echo $mention['rang']; ?>"
                                style="background: <?php echo $mention['couleur']; ?>;">
                             <?php echo htmlspecialchars($mention['libelle']); ?>
