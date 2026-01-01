@@ -1442,3 +1442,170 @@ function verifyStripeWebhookSignature($payload, $sigHeader) {
 
     return false;
 }
+
+// ============================================================================
+// AUTH API - MAGIC LINK (Decision Collective)
+// ============================================================================
+
+/**
+ * Demander un magic link par email
+ * @param string $email Email de l'utilisateur
+ * @return array ['success' => bool, 'message' => string]
+ */
+function authRequestMagicLink($email) {
+    $ch = curl_init(AUTH_API_URL . '/auth/request');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['email' => $email]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json'
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200 || $httpCode === 201) {
+        return ['success' => true, 'message' => 'Si ce compte existe, un email a ete envoye'];
+    }
+
+    $data = json_decode($response, true);
+    return [
+        'success' => false,
+        'message' => $data['detail'] ?? 'Erreur lors de l\'envoi du magic link'
+    ];
+}
+
+/**
+ * Verifier le code recu par email
+ * @param string $email Email de l'utilisateur
+ * @param string $code Code recu par email
+ * @return array ['success' => bool, 'access_token' => string|null, 'requires_totp' => bool, 'error' => string|null]
+ */
+function authVerifyCode($email, $code) {
+    $ch = curl_init(AUTH_API_URL . '/auth/verify-code');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+        'email' => $email,
+        'code' => $code
+    ]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json'
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $data = json_decode($response, true);
+
+    if ($httpCode === 200) {
+        return [
+            'success' => true,
+            'access_token' => $data['access_token'] ?? null,
+            'requires_totp' => $data['requires_totp'] ?? false,
+            'expires_in' => $data['expires_in'] ?? 604800,
+            'error' => null
+        ];
+    }
+
+    return [
+        'success' => false,
+        'access_token' => null,
+        'requires_totp' => false,
+        'error' => $data['detail'] ?? 'Code invalide ou expire'
+    ];
+}
+
+/**
+ * Verifier le code TOTP
+ * @param string $sessionToken Token temporaire
+ * @param string $totpCode Code TOTP 6 chiffres
+ * @return array ['success' => bool, 'access_token' => string|null, 'error' => string|null]
+ */
+function authVerifyTotp($sessionToken, $totpCode) {
+    $ch = curl_init(AUTH_API_URL . '/auth/totp');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['code' => $totpCode]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json',
+        'Authorization: Bearer ' . $sessionToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $data = json_decode($response, true);
+
+    if ($httpCode === 200) {
+        return [
+            'success' => true,
+            'access_token' => $data['access_token'] ?? null,
+            'error' => null
+        ];
+    }
+
+    return [
+        'success' => false,
+        'access_token' => null,
+        'error' => $data['detail'] ?? 'Code TOTP invalide'
+    ];
+}
+
+/**
+ * Obtenir les informations utilisateur depuis le JWT
+ * @param string $accessToken JWT valide
+ * @return array|null ['public_id' => string, 'display_name' => string|null, 'totp_enabled' => bool]
+ */
+function authGetUserInfo($accessToken) {
+    $ch = curl_init(AUTH_API_URL . '/me');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Accept: application/json',
+        'Authorization: Bearer ' . $accessToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        return json_decode($response, true);
+    }
+
+    return null;
+}
+
+/**
+ * Trouver ou creer un utilisateur a partir des infos Magic Link
+ * @param array $authUserInfo Infos retournees par authGetUserInfo
+ * @param string|null $emailHash Hash de l'email (si consentement donne)
+ * @param string|null $displayName Pseudo choisi
+ * @param bool $emailConsent Consentement email
+ * @return array Utilisateur avec id
+ */
+function findOrCreateMagicLinkUser($authUserInfo, $emailHash = null, $displayName = null, $emailConsent = false) {
+    $publicId = $authUserInfo['public_id'];
+
+    // Chercher l'utilisateur par public_id (stocke dans sso_id avec provider 'magiclink')
+    $user = findUserBySsoId('magiclink', $publicId);
+
+    if (!$user) {
+        // Nouvel utilisateur : creer le compte
+        // Utiliser display_name de l'API si pas de pseudo fourni
+        $finalDisplayName = $displayName ?: ($authUserInfo['display_name'] ?? null);
+        $userId = createUser('magiclink', $publicId, $emailHash, $finalDisplayName, $emailConsent);
+        $user = ['id' => $userId];
+    } else {
+        // Utilisateur existant : mettre a jour la derniere connexion
+        updateLastLogin($user['id']);
+    }
+
+    return $user;
+}

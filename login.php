@@ -173,7 +173,42 @@ $csrfToken = generateCsrfToken();
             border-color: #00a4ef;
             background: #f0f9ff;
         }
-        
+
+        .magiclink-button {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .magiclink-button:hover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            color: white;
+        }
+
+        .separator {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: #999;
+            font-size: 13px;
+        }
+
+        .separator::before,
+        .separator::after {
+            content: "";
+            flex: 1;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .separator::before {
+            margin-right: 15px;
+        }
+
+        .separator::after {
+            margin-left: 15px;
+        }
+
         .footer {
             margin-top: 30px;
             text-align: center;
@@ -229,7 +264,7 @@ $csrfToken = generateCsrfToken();
                     </svg>
                     Se connecter avec Google
                 </button>
-                
+
                 <button type="submit" name="provider" value="microsoft" class="sso-button microsoft-button">
                     <svg width="20" height="20" viewBox="0 0 23 23">
                         <path fill="#f25022" d="M0 0h11v11H0z"/>
@@ -241,6 +276,16 @@ $csrfToken = generateCsrfToken();
                 </button>
             </div>
         </form>
+
+        <div class="separator">ou</div>
+
+        <a href="login-magiclink.php" class="sso-button magiclink-button" style="text-decoration: none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Se connecter par email
+        </a>
         
         <div class="footer">
             Nous ne stockons que le strict nécessaire.<br>
