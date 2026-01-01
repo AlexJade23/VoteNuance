@@ -109,7 +109,12 @@ if (!$user) {
             background: #00a4ef;
             color: white;
         }
-        
+
+        .badge-magiclink {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
         .badge-yes {
             background: #28a745;
             color: white;
@@ -171,8 +176,12 @@ if (!$user) {
                 <div class="info-value">
                     <?php if ($user['sso_provider'] === 'google'): ?>
                         <span class="badge badge-google">Google</span>
-                    <?php else: ?>
+                    <?php elseif ($user['sso_provider'] === 'microsoft'): ?>
                         <span class="badge badge-microsoft">Microsoft</span>
+                    <?php elseif ($user['sso_provider'] === 'magiclink'): ?>
+                        <span class="badge badge-magiclink">Email</span>
+                    <?php else: ?>
+                        <span class="badge"><?php echo htmlspecialchars($user['sso_provider']); ?></span>
                     <?php endif; ?>
                 </div>
             </div>
