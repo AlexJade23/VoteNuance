@@ -1583,6 +1583,16 @@ function authGetUserInfo($accessToken) {
 }
 
 /**
+ * Trouver un utilisateur par son sso_id uniquement (tous providers)
+ */
+function findUserBySsoIdOnly($ssoId) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE sso_id = ?');
+    $stmt->execute([$ssoId]);
+    return $stmt->fetch();
+}
+
+/**
  * Trouver ou creer un utilisateur a partir des infos Magic Link
  * @param array $authUserInfo Infos retournees par authGetUserInfo
  * @param string|null $emailHash Hash de l'email (si consentement donne)
@@ -1596,12 +1606,36 @@ function findOrCreateMagicLinkUser($authUserInfo, $emailHash = null, $displayNam
     // Chercher l'utilisateur par public_id (stocke dans sso_id avec provider 'magiclink')
     $user = findUserBySsoId('magiclink', $publicId);
 
+    // Si pas trouve avec magiclink, chercher par sso_id seul (cas migration ou contrainte unique sur sso_id)
+    if (!$user) {
+        $user = findUserBySsoIdOnly($publicId);
+        if ($user) {
+            // Utilisateur existe avec un autre provider, mettre a jour vers magiclink
+            $pdo = getDbConnection();
+            $stmt = $pdo->prepare('UPDATE users SET sso_provider = ? WHERE id = ?');
+            $stmt->execute(['magiclink', $user['id']]);
+            $user['sso_provider'] = 'magiclink';
+        }
+    }
+
     if (!$user) {
         // Nouvel utilisateur : creer le compte
         // Utiliser display_name de l'API si pas de pseudo fourni
         $finalDisplayName = $displayName ?: ($authUserInfo['display_name'] ?? null);
-        $userId = createUser('magiclink', $publicId, $emailHash, $finalDisplayName, $emailConsent);
-        $user = ['id' => $userId];
+        try {
+            $userId = createUser('magiclink', $publicId, $emailHash, $finalDisplayName, $emailConsent);
+            $user = ['id' => $userId];
+        } catch (PDOException $e) {
+            // En cas de duplicate key, l'utilisateur existe deja - le recuperer
+            if ($e->getCode() == 23000) {
+                $user = findUserBySsoIdOnly($publicId);
+                if ($user) {
+                    updateLastLogin($user['id']);
+                    return $user;
+                }
+            }
+            throw $e;
+        }
     } else {
         // Utilisateur existant : mettre a jour la derniere connexion
         updateLastLogin($user['id']);
