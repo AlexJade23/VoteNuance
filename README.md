@@ -92,7 +92,7 @@ Taux = (Partisans - Opposants) / Participants
 ### Structure de la base de donnees
 
 8 tables principales :
-- `users` : utilisateurs SSO (Google/Microsoft)
+- `users` : utilisateurs SSO (Google/Microsoft/Magic Link)
 - `echelles` : definitions des echelles de vote
 - `mentions` : mentions par echelle (7 pour le vote nuance)
 - `scrutins` : les consultations
@@ -123,6 +123,12 @@ VoteNuance/
 ├── oauth-redirect.php      # Redirection vers Google/Microsoft
 ├── callback.php            # Traitement du retour OAuth
 ├── logout.php              # Deconnexion
+├── login-magiclink.php     # Connexion par email (Magic Link)
+├── totp-verify.php         # Verification TOTP (double auth)
+├── auth/
+│   └── callback.php        # Callback Magic Link (token JWT)
+├── settings/
+│   └── security.php        # Gestion TOTP (activer/desactiver)
 │
 ├── dashboard.php           # Mon compte
 ├── my-data.php             # Gestion des donnees personnelles
@@ -214,7 +220,54 @@ define('STRIPE_WEBHOOK_SECRET', 'whsec_xxx');         // Secret du webhook
 define('STRIPE_PRICE_PER_TOKEN_CENTS', 100);          // Prix par jeton en centimes (100 = 1 EUR)
 ```
 
-### 3. Configuration OAuth
+### 3. Authentification Magic Link (optionnel)
+
+En plus de Google/Microsoft, une 3eme methode de connexion est disponible via l'API `auth.decision-collective.fr` :
+
+- **Magic Link** : L'utilisateur recoit un code par email
+- **TOTP optionnel** : Double authentification avec Google Authenticator, Authy, etc.
+
+Configuration dans `config.php` :
+```php
+define('AUTH_API_URL', 'https://auth.decision-collective.fr');
+```
+
+#### Flux de connexion Magic Link
+
+```
+1. Utilisateur saisit son email (login-magiclink.php)
+       ↓
+2. API envoie un email avec code + lien
+       ↓
+3a. Clic sur lien → /auth/callback (token JWT)
+3b. Saisie du code → verification API
+       ↓
+4. Si TOTP active → totp-verify.php
+       ↓
+5. Connexion reussie → dashboard.php
+```
+
+#### Gestion TOTP
+
+La page `/settings/security.php` permet d'activer/desactiver la double authentification :
+- Generation du QR code pour l'app d'authentification
+- Codes de recuperation en cas de perte
+- Desactivation avec code TOTP
+
+#### Modification BDD requise
+
+Pour supporter Magic Link, modifier l'ENUM de la colonne `sso_provider` :
+
+```sql
+ALTER TABLE users
+MODIFY COLUMN sso_provider ENUM('google', 'microsoft', 'magiclink') NOT NULL;
+```
+
+#### Limitation connue
+
+Lorsqu'un lien Magic Link expire, le serveur `auth.decision-collective.fr` affiche un JSON brut `{"detail":"Token invalide ou expiré"}` au lieu d'une page d'erreur propre. L'API ne propose pas de parametre `error_redirect_url` pour personnaliser ce comportement.
+
+### 4. Configuration OAuth
 
 **Google** : [Google Cloud Console](https://console.cloud.google.com)
 - Creer un projet > Identifiants > ID client OAuth 2.0
@@ -441,7 +494,7 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 ## Etat d'avancement
 
 ### Termine
-- [x] Authentification SSO (Google/Microsoft)
+- [x] Authentification SSO (Google/Microsoft/Magic Link)
 - [x] Gestion des donnees personnelles
 - [x] Schema BDD complet
 - [x] Interface de creation/modification de scrutin
@@ -467,6 +520,7 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - [x] Echelles flexibles 3/5/7 mentions au niveau scrutin (US-020)
 
 ### A venir
+- [ ] Page d'erreur personnalisee pour Magic Link expire (necessite modif API auth)
 - [ ] Emails de notification (priorite basse)
 - [ ] Mode sombre (priorite basse)
 - [ ] Drag & drop et compression images (priorite basse)
