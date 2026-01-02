@@ -58,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Creer la session PHP
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['user_provider'] = 'magiclink';
+                    $_SESSION['magiclink_jwt'] = $accessToken;
 
                     // Nettoyer les donnees temporaires
                     unset($_SESSION['magiclink_email']);

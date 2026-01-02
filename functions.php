@@ -1444,7 +1444,7 @@ function verifyStripeWebhookSignature($payload, $sigHeader) {
 }
 
 // ============================================================================
-// AUTH API - MAGIC LINK (Decision Collective)
+// AUTH API - MAGIC LINK & TOTP (Decision Collective)
 // ============================================================================
 
 /**
@@ -1607,4 +1607,95 @@ function findOrCreateMagicLinkUser($authUserInfo, $emailHash = null, $displayNam
     }
 
     return $user;
+}
+
+/**
+ * Generer le setup TOTP (secret + QR code)
+ * @param string $accessToken JWT valide
+ * @return array|null ['secret' => string, 'qr_uri' => string, 'recovery_codes' => array]
+ */
+function authTotpSetup($accessToken) {
+    $ch = curl_init(AUTH_API_URL . '/auth/totp/setup');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, '');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json',
+        'Authorization: Bearer ' . $accessToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        return json_decode($response, true);
+    }
+
+    return null;
+}
+
+/**
+ * Confirmer l'activation TOTP avec un code
+ * @param string $accessToken JWT valide
+ * @param string $code Code TOTP 6 chiffres
+ * @return array ['success' => bool, 'error' => string|null]
+ */
+function authTotpConfirm($accessToken, $code) {
+    $ch = curl_init(AUTH_API_URL . '/auth/totp/confirm');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['code' => $code]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json',
+        'Authorization: Bearer ' . $accessToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        return ['success' => true, 'error' => null];
+    }
+
+    $data = json_decode($response, true);
+    return [
+        'success' => false,
+        'error' => $data['detail'] ?? 'Code TOTP invalide'
+    ];
+}
+
+/**
+ * Desactiver TOTP
+ * @param string $accessToken JWT valide
+ * @param string $code Code TOTP 6 chiffres
+ * @return array ['success' => bool, 'error' => string|null]
+ */
+function authTotpDisable($accessToken, $code) {
+    $ch = curl_init(AUTH_API_URL . '/auth/totp/disable');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['code' => $code]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json',
+        'Authorization: Bearer ' . $accessToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        return ['success' => true, 'error' => null];
+    }
+
+    $data = json_decode($response, true);
+    return [
+        'success' => false,
+        'error' => $data['detail'] ?? 'Code TOTP invalide'
+    ];
 }

@@ -1,3 +1,6 @@
 deploy.sh
 deploy-test.sh
 config.php
+
+# Fichiers temporaires
+tmux-*.log
