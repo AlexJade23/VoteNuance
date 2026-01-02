@@ -126,7 +126,8 @@ VoteNuance/
 ├── login-magiclink.php     # Connexion par email (Magic Link)
 ├── totp-verify.php         # Verification TOTP (double auth)
 ├── auth/
-│   └── callback.php        # Callback Magic Link (token JWT)
+│   ├── callback.php        # Callback Magic Link (token JWT)
+│   └── error.php           # Page d'erreur (lien expire, invalide)
 ├── settings/
 │   └── security.php        # Gestion TOTP (activer/desactiver)
 │
@@ -263,9 +264,9 @@ ALTER TABLE users
 MODIFY COLUMN sso_provider ENUM('google', 'microsoft', 'magiclink') NOT NULL;
 ```
 
-#### Limitation connue
+#### Page d'erreur pour liens expires
 
-Lorsqu'un lien Magic Link expire, le serveur `auth.decision-collective.fr` affiche un JSON brut `{"detail":"Token invalide ou expiré"}` au lieu d'une page d'erreur propre. L'API ne propose pas de parametre `error_redirect_url` pour personnaliser ce comportement.
+Lorsqu'un lien Magic Link expire ou est invalide, l'utilisateur est redirige vers `/auth/error?reason=token_expired` qui affiche un message clair et propose de demander un nouveau lien.
 
 ### 4. Configuration OAuth
 
@@ -518,9 +519,9 @@ Cette verification prouve que le vote a ete enregistre sans reveler l'identite d
 - [x] Export/Import XLS scrutins et votes (US-016 a US-019)
 - [x] Graphique evolution de la participation dans le temps (US-014)
 - [x] Echelles flexibles 3/5/7 mentions au niveau scrutin (US-020)
+- [x] Page d'erreur Magic Link (`/auth/error`) pour liens expires ou invalides
 
 ### A venir
-- [ ] Page d'erreur personnalisee pour Magic Link expire (necessite modif API auth)
 - [ ] Emails de notification (priorite basse)
 - [ ] Mode sombre (priorite basse)
 - [ ] Drag & drop et compression images (priorite basse)
