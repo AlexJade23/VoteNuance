@@ -112,6 +112,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $step = 'code';
                 }
             }
+        } elseif ($action === 'resend_code') {
+            // Renvoyer le code
+            $email = $_SESSION['magiclink_email'] ?? '';
+            if (empty($email)) {
+                $error = 'Session expiree, veuillez recommencer.';
+                $step = 'email';
+            } else {
+                $result = authRequestMagicLink($email);
+                $step = 'code';
+                $success = 'Un nouveau code a ete envoye a votre adresse email.';
+            }
         } elseif ($action === 'back') {
             // Retour a l'etape email
             $step = 'email';
@@ -437,10 +448,14 @@ if ($step === 'email' && isset($_SESSION['magiclink_email'])) {
                 </button>
             </form>
 
-            <p class="resend-info">
-                Vous n'avez pas recu le code ? Verifiez vos spams ou
-                <a href="#" onclick="document.querySelector('form[action=\\'\\']').querySelector('[name=action]').value='request_code'; document.querySelector('form').submit(); return false;">renvoyer le code</a>
-            </p>
+            <form method="POST" action="" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                <input type="hidden" name="action" value="resend_code">
+                <p class="resend-info">
+                    Vous n'avez pas recu le code ? Verifiez vos spams ou
+                    <button type="submit" style="background: none; border: none; color: #667eea; cursor: pointer; text-decoration: underline; font-size: inherit; padding: 0;">renvoyer le code</button>
+                </p>
+            </form>
 
         <?php endif; ?>
 
