@@ -21,7 +21,7 @@ $userInfo = authGetUserInfo($token);
 
 if (!$userInfo) {
     // Token invalide ou expire
-    header('Location: ../login-magiclink.php?error=token_invalid');
+    header('Location: error.php?reason=token_expired');
     exit;
 }
 
