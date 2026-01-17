@@ -376,11 +376,12 @@ function generateScrutinCode() {
 
 /**
  * Vérifier si un code de scrutin existe déjà
+ * Le code est normalisé en minuscules pour être insensible à la casse
  */
 function scrutinCodeExists($code) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('SELECT 1 FROM scrutins WHERE code = ?');
-    $stmt->execute([$code]);
+    $stmt->execute([strtolower($code)]);
     return $stmt->fetch() !== false;
 }
 
@@ -415,11 +416,12 @@ function createScrutin($data) {
 
 /**
  * Récupérer un scrutin par son code
+ * Le code est normalisé en minuscules pour être insensible à la casse
  */
 function getScrutinByCode($code) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('SELECT * FROM scrutins WHERE code = ?');
-    $stmt->execute([$code]);
+    $stmt->execute([strtolower($code)]);
     return $stmt->fetch();
 }
 
@@ -1602,7 +1604,21 @@ function findOrCreateMagicLinkUser($authUserInfo, $emailHash = null, $displayNam
         $userId = createUser('magiclink', $publicId, $emailHash, $finalDisplayName, $emailConsent);
         $user = ['id' => $userId];
     } else {
-        // Utilisateur existant : mettre a jour la derniere connexion
+        // Utilisateur existant : mettre a jour la derniere connexion ET les preferences
+        $pdo = getDbConnection();
+
+        // Mettre a jour displayName si fourni
+        if (!empty($displayName)) {
+            $stmt = $pdo->prepare('UPDATE users SET display_name = ? WHERE id = ?');
+            $stmt->execute([$displayName, $user['id']]);
+        }
+
+        // Mettre a jour emailHash si consentement donne
+        if ($emailConsent && !empty($emailHash)) {
+            $stmt = $pdo->prepare('UPDATE users SET email_hash = ?, email_hash_consent = 1 WHERE id = ?');
+            $stmt->execute([$emailHash, $user['id']]);
+        }
+
         updateLastLogin($user['id']);
     }
 

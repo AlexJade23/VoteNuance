@@ -4,3 +4,6 @@ config.php
 
 # Fichiers temporaires
 tmux-*.log
+
+# Composer dependencies
+vendor/
