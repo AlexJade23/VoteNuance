@@ -130,6 +130,32 @@
 - [x] config.php dans .gitignore (jamais versionne)
 - [x] Bandeau orange test sur toutes les pages (IS_TEST_ENV)
 
+## A tester (sur tst.de-co.fr)
+
+### Export/Import admin (admin-export.php)
+- [ ] Export d'un scrutin avec ses votes
+- [ ] Import du fichier SQL genere
+- [ ] Verification integrite des donnees importees
+
+### Authentification Magic Link (login-magiclink.php)
+- [ ] Demande de lien de connexion par email
+- [ ] Reception et validation du lien
+- [ ] Connexion sans mot de passe
+
+### TOTP / 2FA (totp-verify.php)
+- [ ] Activation 2FA sur un compte
+- [ ] Scan QR code avec app authenticator
+- [ ] Verification code TOTP a la connexion
+
+### Parametres securite (settings/security.php)
+- [ ] Acces a la page settings
+- [ ] Configuration options securite utilisateur
+- [ ] Sauvegarde des preferences
+
+### Export scrutin individuel (export-scrutin.php)
+- [ ] Export d'un scrutin specifique
+- [ ] Format du fichier genere
+
 ## A faire
 
 ### Notifications (priorite basse)
