@@ -170,6 +170,23 @@
 ### Maintenance (priorite basse)
 - [ ] US-012 : Suppression automatique anciennes images non utilisees
 
+### Tests unitaires (priorite moyenne)
+- [ ] Installer PHPUnit et configurer phpunit.xml
+- [ ] Creer dossier tests/ avec structure PSR-4
+- [ ] Tests admin-export.php :
+  - [ ] Test generation SQL sans DELETE (import non destructif)
+  - [ ] Test gestion codes dupliques (code_imp1, code_imp2...)
+  - [ ] Test signature HMAC (generation et verification)
+  - [ ] Test validation fichier import (extension, taille, signature)
+- [ ] Tests functions.php :
+  - [ ] Test getMentionsForScale() pour echelles 3/5/7
+  - [ ] Test calculateVoteNuanceScore()
+  - [ ] Test calculateTiebreakers()
+- [ ] Tests scrutin-create.php :
+  - [ ] Test validation donnees scrutin
+  - [ ] Test creation avec differentes echelles
+- [ ] Integrer tests dans workflow CI/CD (GitHub Actions)
+
 ## Notes techniques
 
 ### Deploiement FTP
