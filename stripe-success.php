@@ -248,9 +248,11 @@ $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : '
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        <?php echo getTestBannerCSS(); ?>
     </style>
 </head>
 <body>
+<?php echo renderTestBanner(); ?>
     <div class="container">
         <?php if ($error): ?>
         <div class="card">

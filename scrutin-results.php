@@ -564,9 +564,11 @@ if ($isOwner && $nbParticipants > 0) {
             border-radius: 4px;
             font-weight: 500;
         }
+        <?php echo getTestBannerCSS(); ?>
     </style>
 </head>
 <body>
+<?php echo renderTestBanner(); ?>
     <div class="container">
         <a href="/<?php echo urlencode($code); ?>/v/" class="back-link">&#8592; Retour au scrutin</a>
 

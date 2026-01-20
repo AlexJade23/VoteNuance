@@ -376,11 +376,12 @@ function generateScrutinCode() {
 
 /**
  * Vérifier si un code de scrutin existe déjà
+ * Le code est normalisé en minuscules pour être insensible à la casse
  */
 function scrutinCodeExists($code) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('SELECT 1 FROM scrutins WHERE code = ?');
-    $stmt->execute([$code]);
+    $stmt->execute([strtolower($code)]);
     return $stmt->fetch() !== false;
 }
 
@@ -415,11 +416,12 @@ function createScrutin($data) {
 
 /**
  * Récupérer un scrutin par son code
+ * Le code est normalisé en minuscules pour être insensible à la casse
  */
 function getScrutinByCode($code) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('SELECT * FROM scrutins WHERE code = ?');
-    $stmt->execute([$code]);
+    $stmt->execute([strtolower($code)]);
     return $stmt->fetch();
 }
 
@@ -613,6 +615,114 @@ function getQuestionTitlesForLot($scrutinId, $lotNum) {
     ');
     $stmt->execute([$scrutinId, $lotNum]);
     return $stmt->fetchAll();
+}
+
+/**
+ * Récupérer le TOP 3 des résultats pour un scrutin (lot 1, type Vote Nuancé)
+ * Retourne un tableau avec titre, tauxPartisansNet, classement pour chaque candidat
+ */
+function getTop3ResultsForScrutin($scrutinId, $nbMentions = 7) {
+    $pdo = getDbConnection();
+
+    // Récupérer les questions du lot 1, type Vote Nuancé (type 0)
+    $stmt = $pdo->prepare('
+        SELECT id, titre
+        FROM questions
+        WHERE scrutin_id = ? AND lot = 1 AND type_question = 0
+        ORDER BY ordre
+    ');
+    $stmt->execute([$scrutinId]);
+    $questions = $stmt->fetchAll();
+
+    if (empty($questions)) {
+        return [];
+    }
+
+    // Récupérer les mentions pour l'échelle
+    $mentionsList = getMentionsForScale($nbMentions);
+    $mentionsByRang = [];
+    foreach ($mentionsList as $m) {
+        $mentionsByRang[$m['rang']] = $m;
+    }
+
+    $results = [];
+
+    foreach ($questions as $question) {
+        // Récupérer les votes pour cette question
+        $stmt = $pdo->prepare('
+            SELECT vote_mention, COUNT(*) as count
+            FROM bulletins
+            WHERE scrutin_id = ? AND question_id = ? AND est_test = 0 AND vote_mention IS NOT NULL
+            GROUP BY vote_mention
+        ');
+        $stmt->execute([$scrutinId, $question['id']]);
+        $voteCounts = $stmt->fetchAll();
+
+        // Construire le tableau des votes par code
+        $votesByCode = [];
+        foreach ($mentionsList as $m) {
+            $votesByCode[$m['code']] = 0;
+        }
+
+        $total = 0;
+        foreach ($voteCounts as $vc) {
+            $rang = $vc['vote_mention'];
+            $count = (int)$vc['count'];
+            $total += $count;
+            if (isset($mentionsByRang[$rang])) {
+                $code = $mentionsByRang[$rang]['code'];
+                $votesByCode[$code] = $count;
+            }
+        }
+
+        if ($total == 0) {
+            continue; // Pas de votes, on skip
+        }
+
+        // Calculer pour/contre
+        $pour = 0;
+        $contre = 0;
+        foreach ($mentionsList as $m) {
+            $count = $votesByCode[$m['code']] ?? 0;
+            if ($m['est_partisan'] > 0) {
+                $pour += $count;
+            } elseif ($m['est_partisan'] < 0) {
+                $contre += $count;
+            }
+        }
+
+        // Calcul du classement et départages
+        $classement = calculateVoteNuanceScore($votesByCode, $nbMentions);
+        $tiebreakers = calculateTiebreakers($votesByCode, $nbMentions);
+
+        // Taux de partisans net
+        $tauxPartisansNet = round((($pour - $contre) / $total) * 100, 1);
+
+        $results[] = [
+            'titre' => $question['titre'],
+            'classement' => $classement,
+            'niveau1' => $tiebreakers[0],
+            'niveau2' => $tiebreakers[1],
+            'niveau3' => $tiebreakers[2],
+            'tauxPartisansNet' => $tauxPartisansNet,
+            'total' => $total,
+            'votesByCode' => $votesByCode
+        ];
+    }
+
+    // Trier par classement (score + départages)
+    usort($results, function($a, $b) {
+        $cmp = $b['classement'] <=> $a['classement'];
+        if ($cmp !== 0) return $cmp;
+        $cmp = $b['niveau1'] <=> $a['niveau1'];
+        if ($cmp !== 0) return $cmp;
+        $cmp = $b['niveau2'] <=> $a['niveau2'];
+        if ($cmp !== 0) return $cmp;
+        return $b['niveau3'] <=> $a['niveau3'];
+    });
+
+    // Retourner le top 3
+    return array_slice($results, 0, 3);
 }
 
 /**
@@ -1441,4 +1551,275 @@ function verifyStripeWebhookSignature($payload, $sigHeader) {
     }
 
     return false;
+}
+
+// ============================================================================
+// AUTH API - MAGIC LINK & TOTP (Decision Collective)
+// ============================================================================
+
+/**
+ * Demander un magic link par email
+ * @param string $email Email de l'utilisateur
+ * @return array ['success' => bool, 'message' => string]
+ */
+function authRequestMagicLink($email) {
+    $ch = curl_init(AUTH_API_URL . '/auth/request');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['email' => $email]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json'
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200 || $httpCode === 201) {
+        return ['success' => true, 'message' => 'Si ce compte existe, un email a ete envoye'];
+    }
+
+    $data = json_decode($response, true);
+    return [
+        'success' => false,
+        'message' => $data['detail'] ?? 'Erreur lors de l\'envoi du magic link'
+    ];
+}
+
+/**
+ * Verifier le code recu par email
+ * @param string $email Email de l'utilisateur
+ * @param string $code Code recu par email
+ * @return array ['success' => bool, 'access_token' => string|null, 'requires_totp' => bool, 'error' => string|null]
+ */
+function authVerifyCode($email, $code) {
+    $ch = curl_init(AUTH_API_URL . '/auth/verify-code');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+        'email' => $email,
+        'code' => $code
+    ]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json'
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $data = json_decode($response, true);
+
+    if ($httpCode === 200) {
+        return [
+            'success' => true,
+            'access_token' => $data['access_token'] ?? null,
+            'requires_totp' => $data['requires_totp'] ?? false,
+            'expires_in' => $data['expires_in'] ?? 604800,
+            'error' => null
+        ];
+    }
+
+    return [
+        'success' => false,
+        'access_token' => null,
+        'requires_totp' => false,
+        'error' => $data['detail'] ?? 'Code invalide ou expire'
+    ];
+}
+
+/**
+ * Verifier le code TOTP
+ * @param string $sessionToken Token temporaire
+ * @param string $totpCode Code TOTP 6 chiffres
+ * @return array ['success' => bool, 'access_token' => string|null, 'error' => string|null]
+ */
+function authVerifyTotp($sessionToken, $totpCode) {
+    $ch = curl_init(AUTH_API_URL . '/auth/totp');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['code' => $totpCode]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json',
+        'Authorization: Bearer ' . $sessionToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $data = json_decode($response, true);
+
+    if ($httpCode === 200) {
+        return [
+            'success' => true,
+            'access_token' => $data['access_token'] ?? null,
+            'error' => null
+        ];
+    }
+
+    return [
+        'success' => false,
+        'access_token' => null,
+        'error' => $data['detail'] ?? 'Code TOTP invalide'
+    ];
+}
+
+/**
+ * Obtenir les informations utilisateur depuis le JWT
+ * @param string $accessToken JWT valide
+ * @return array|null ['public_id' => string, 'display_name' => string|null, 'totp_enabled' => bool]
+ */
+function authGetUserInfo($accessToken) {
+    $ch = curl_init(AUTH_API_URL . '/me');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Accept: application/json',
+        'Authorization: Bearer ' . $accessToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        return json_decode($response, true);
+    }
+
+    return null;
+}
+
+/**
+ * Trouver ou creer un utilisateur a partir des infos Magic Link
+ * @param array $authUserInfo Infos retournees par authGetUserInfo
+ * @param string|null $emailHash Hash de l'email (si consentement donne)
+ * @param string|null $displayName Pseudo choisi
+ * @param bool $emailConsent Consentement email
+ * @return array Utilisateur avec id
+ */
+function findOrCreateMagicLinkUser($authUserInfo, $emailHash = null, $displayName = null, $emailConsent = false) {
+    $publicId = $authUserInfo['public_id'];
+
+    // Chercher l'utilisateur par public_id (stocke dans sso_id avec provider 'magiclink')
+    $user = findUserBySsoId('magiclink', $publicId);
+
+    if (!$user) {
+        // Nouvel utilisateur : creer le compte
+        $finalDisplayName = $displayName ?: ($authUserInfo['display_name'] ?? null);
+        $userId = createUser('magiclink', $publicId, $emailHash, $finalDisplayName, $emailConsent);
+        $user = ['id' => $userId];
+    } else {
+        // Utilisateur existant : mettre a jour la derniere connexion ET les preferences
+        $pdo = getDbConnection();
+
+        // Mettre a jour displayName si fourni
+        if (!empty($displayName)) {
+            $stmt = $pdo->prepare('UPDATE users SET display_name = ? WHERE id = ?');
+            $stmt->execute([$displayName, $user['id']]);
+        }
+
+        // Mettre a jour emailHash si consentement donne
+        if ($emailConsent && !empty($emailHash)) {
+            $stmt = $pdo->prepare('UPDATE users SET email_hash = ?, email_hash_consent = 1 WHERE id = ?');
+            $stmt->execute([$emailHash, $user['id']]);
+        }
+
+        updateLastLogin($user['id']);
+    }
+
+    return $user;
+}
+
+/**
+ * Generer le setup TOTP (secret + QR code)
+ * @param string $accessToken JWT valide
+ * @return array|null ['secret' => string, 'qr_uri' => string, 'recovery_codes' => array]
+ */
+function authTotpSetup($accessToken) {
+    $ch = curl_init(AUTH_API_URL . '/auth/totp/setup');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, '');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json',
+        'Authorization: Bearer ' . $accessToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        return json_decode($response, true);
+    }
+
+    return null;
+}
+
+/**
+ * Confirmer l'activation TOTP avec un code
+ * @param string $accessToken JWT valide
+ * @param string $code Code TOTP 6 chiffres
+ * @return array ['success' => bool, 'error' => string|null]
+ */
+function authTotpConfirm($accessToken, $code) {
+    $ch = curl_init(AUTH_API_URL . '/auth/totp/confirm');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['code' => $code]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json',
+        'Authorization: Bearer ' . $accessToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        return ['success' => true, 'error' => null];
+    }
+
+    $data = json_decode($response, true);
+    return [
+        'success' => false,
+        'error' => $data['detail'] ?? 'Code TOTP invalide'
+    ];
+}
+
+/**
+ * Desactiver TOTP
+ * @param string $accessToken JWT valide
+ * @param string $code Code TOTP 6 chiffres
+ * @return array ['success' => bool, 'error' => string|null]
+ */
+function authTotpDisable($accessToken, $code) {
+    $ch = curl_init(AUTH_API_URL . '/auth/totp/disable');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['code' => $code]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json',
+        'Authorization: Bearer ' . $accessToken
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        return ['success' => true, 'error' => null];
+    }
+
+    $data = json_decode($response, true);
+    return [
+        'success' => false,
+        'error' => $data['detail'] ?? 'Code TOTP invalide'
+    ];
 }

@@ -46,10 +46,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (empty($code)) {
             $code = generateScrutinCode();
-        } elseif (!preg_match('/^[a-z0-9\-]+$/', $code)) {
-            $errors[] = 'Le code ne peut contenir que des lettres minuscules, chiffres et tirets';
-        } elseif (scrutinCodeExists($code)) {
-            $errors[] = 'Ce code est déjà utilisé';
+        } elseif (!preg_match('/^[a-zA-Z0-9_\-]+$/', $code)) {
+            $errors[] = 'Le code ne peut contenir que des lettres, chiffres, tirets et underscores (pas d\'espaces)';
+        } else {
+            $code = strtolower($code); // Normaliser en minuscules
+            if (scrutinCodeExists($code)) {
+                $errors[] = 'Ce code est déjà utilisé';
+            }
         }
 
         if ($debut_at && $fin_at && strtotime($fin_at) <= strtotime($debut_at)) {
@@ -599,7 +602,7 @@ $csrfToken = generateCsrfToken();
                         <label for="code">Code URL <small>(généré automatiquement si vide)</small></label>
                         <input type="text" id="code" name="code"
                                value="<?php echo htmlspecialchars($_POST['code'] ?? ''); ?>"
-                               placeholder="ex: choix-logo-2024" pattern="[a-z0-9\-]+">
+                               placeholder="ex: Vote_Assemblee2024" pattern="[a-zA-Z0-9_\-]+">
                     </div>
                     <div class="form-group">
                         <label for="nb_gagnants">Nombre de gagnants</label>

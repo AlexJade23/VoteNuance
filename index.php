@@ -1,3 +1,7 @@
+<?php
+require_once 'config.php';
+require_once 'functions.php';
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -194,9 +198,11 @@
         footer a:hover {
             color: #333;
         }
+        <?php echo getTestBannerCSS(); ?>
     </style>
 </head>
 <body>
+<?php echo renderTestBanner(); ?>
     <div class="container">
         <header>
             <a href="https://decision-collective.fr/" target="_blank" title="Découvrir le concept, la vidéo et les ressources">

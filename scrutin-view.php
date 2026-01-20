@@ -618,9 +618,11 @@ $typeLabels = [
             background: #667eea;
             color: white;
         }
+        <?php echo getTestBannerCSS(); ?>
     </style>
 </head>
 <body>
+<?php echo renderTestBanner(); ?>
     <div class="container">
         <?php if ($isOwner): ?>
         <a href="/mes-scrutins.php" class="back-link">← Retour à mes scrutins</a>

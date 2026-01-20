@@ -1,11 +1,15 @@
 <?php
 /**
- * Import scrutin depuis fichier XLS (XML Spreadsheet)
+ * Import scrutin depuis fichier tableur (XLS, XLSX, XML)
  * Cree un nouveau scrutin a partir d'un fichier exporte
+ * Utilise PhpSpreadsheet pour supporter tous les formats
  */
 
 require_once 'config.php';
 require_once 'functions.php';
+require_once __DIR__ . '/vendor/autoload.php';
+
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 // Verifier que l'utilisateur est connecte
 if (!isLoggedIn()) {
@@ -36,17 +40,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $newCode = generateScrutinCode();
             } else {
                 // Validation du format
-                if (!preg_match('/^[a-z0-9\-]+$/', $code)) {
-                    $errors[] = 'Le code ne peut contenir que des lettres minuscules, chiffres et tirets';
+                if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $code)) {
+                    $errors[] = 'Le code ne peut contenir que des lettres, chiffres, tirets et underscores (pas d\'espaces)';
                     // Garder les donnees en session pour retry
                     $preview = $data;
-                } elseif (scrutinCodeExists($code)) {
-                    // Cas 4: code deja pris
-                    $errors[] = 'Ce code est deja utilise. Veuillez en choisir un autre.';
-                    $preview = $data;
                 } else {
-                    // Cas 1 & 2: code valide
-                    $newCode = $code;
+                    $code = strtolower($code); // Normaliser en minuscules
+                    if (scrutinCodeExists($code)) {
+                        // Cas 4: code deja pris
+                        $errors[] = 'Ce code est deja utilise. Veuillez en choisir un autre.';
+                        $preview = $data;
+                    } else {
+                        // Cas 1 & 2: code valide
+                        $newCode = $code;
+                    }
                 }
             }
 
@@ -115,12 +122,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($file['size'] > 5 * 1024 * 1024) {
                 $errors[] = 'Fichier trop volumineux (max 5 Mo)';
             } else {
-                // Lire et parser le fichier XML
-                $content = file_get_contents($file['tmp_name']);
-                $parsed = parseXmlSpreadsheet($content);
+                // Parser le fichier avec PhpSpreadsheet (supporte XLS, XLSX, XML)
+                $parsed = parseSpreadsheetFile($file['tmp_name']);
 
                 if ($parsed === false) {
-                    $errors[] = 'Format de fichier invalide. Utilisez un fichier exporte depuis Vote Nuance.';
+                    $errors[] = 'Format de fichier invalide. Utilisez un fichier exporte depuis Vote Nuance (XLS, XLSX ou XML).';
                 } else {
                     // Stocker en session pour confirmation
                     $_SESSION['import_preview'] = $parsed;
@@ -132,25 +138,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /**
- * Parser un fichier XML Spreadsheet
+ * Parser un fichier tableur (XLS, XLSX, XML) avec PhpSpreadsheet
  */
-function parseXmlSpreadsheet($content) {
-    // Supprimer le BOM si present
-    $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
-
-    // Charger le XML
-    libxml_use_internal_errors(true);
-    $xml = simplexml_load_string($content);
-
-    if ($xml === false) {
+function parseSpreadsheetFile($filePath) {
+    try {
+        // Auto-detection du format et chargement
+        $spreadsheet = IOFactory::load($filePath);
+    } catch (Exception $e) {
         return false;
     }
-
-    // Namespaces
-    $namespaces = $xml->getNamespaces(true);
-    $ss = isset($namespaces['ss']) ? $namespaces['ss'] : 'urn:schemas-microsoft-com:office:spreadsheet';
-
-    $xml->registerXPathNamespace('ss', $ss);
 
     $result = [
         'scrutin' => [],
@@ -158,18 +154,21 @@ function parseXmlSpreadsheet($content) {
         'reponses_qcm' => []
     ];
 
-    // Parser l'onglet Scrutin
-    $worksheets = $xml->xpath('//ss:Worksheet');
-    foreach ($worksheets as $ws) {
-        $name = (string)$ws->attributes($ss)['Name'];
+    // Parcourir les feuilles
+    foreach ($spreadsheet->getSheetNames() as $sheetName) {
+        $sheet = $spreadsheet->getSheetByName($sheetName);
 
-        if ($name === 'Scrutin') {
-            $rows = $ws->xpath('.//ss:Row');
-            foreach ($rows as $row) {
-                $cells = $row->xpath('.//ss:Cell/ss:Data');
-                if (count($cells) >= 2) {
-                    $field = strtolower(trim((string)$cells[0]));
-                    $value = trim((string)$cells[1]);
+        if ($sheetName === 'Scrutin') {
+            // Parser les donnees du scrutin (format cle/valeur)
+            foreach ($sheet->getRowIterator() as $row) {
+                $cells = [];
+                foreach ($row->getCellIterator() as $cell) {
+                    $cells[] = trim((string)$cell->getValue());
+                }
+
+                if (count($cells) >= 2 && !empty($cells[0])) {
+                    $field = strtolower($cells[0]);
+                    $value = $cells[1];
 
                     switch ($field) {
                         case 'titre': $result['scrutin']['titre'] = $value; break;
@@ -185,37 +184,45 @@ function parseXmlSpreadsheet($content) {
                     }
                 }
             }
-        } elseif ($name === 'Questions') {
-            $rows = $ws->xpath('.//ss:Row');
+        } elseif ($sheetName === 'Questions') {
+            // Parser les questions (avec en-tete)
             $isHeader = true;
-            foreach ($rows as $row) {
+            foreach ($sheet->getRowIterator() as $row) {
                 if ($isHeader) { $isHeader = false; continue; }
 
-                $cells = $row->xpath('.//ss:Cell/ss:Data');
-                if (count($cells) >= 6) {
+                $cells = [];
+                foreach ($row->getCellIterator() as $cell) {
+                    $cells[] = trim((string)$cell->getValue());
+                }
+
+                if (count($cells) >= 6 && !empty($cells[1])) {
                     $result['questions'][] = [
-                        'ordre' => intval((string)$cells[0]),
-                        'titre' => (string)$cells[1],
-                        'description' => (string)$cells[2],
-                        'type' => (string)$cells[3],
-                        'lot' => intval((string)$cells[4]),
-                        'obligatoire' => ((string)$cells[5] === 'Oui') ? 1 : 0,
-                        'type_id' => isset($cells[6]) ? intval((string)$cells[6]) : 0,
-                        'image_url' => isset($cells[7]) ? (string)$cells[7] : '',
+                        'ordre' => intval($cells[0]),
+                        'titre' => $cells[1],
+                        'description' => $cells[2] ?? '',
+                        'type' => $cells[3] ?? '',
+                        'lot' => intval($cells[4] ?? 0),
+                        'obligatoire' => (($cells[5] ?? '') === 'Oui') ? 1 : 0,
+                        'type_id' => isset($cells[6]) ? intval($cells[6]) : 0,
+                        'image_url' => $cells[7] ?? '',
                         'reponses' => []
                     ];
                 }
             }
-        } elseif ($name === 'Reponses QCM') {
-            $rows = $ws->xpath('.//ss:Row');
+        } elseif ($sheetName === 'Reponses QCM') {
+            // Parser les reponses QCM
             $isHeader = true;
-            foreach ($rows as $row) {
+            foreach ($sheet->getRowIterator() as $row) {
                 if ($isHeader) { $isHeader = false; continue; }
 
-                $cells = $row->xpath('.//ss:Cell/ss:Data');
-                if (count($cells) >= 3) {
-                    $questionTitle = (string)$cells[0];
-                    $reponse = (string)$cells[2];
+                $cells = [];
+                foreach ($row->getCellIterator() as $cell) {
+                    $cells[] = trim((string)$cell->getValue());
+                }
+
+                if (count($cells) >= 3 && !empty($cells[0])) {
+                    $questionTitle = $cells[0];
+                    $reponse = $cells[2];
 
                     // Associer aux questions
                     foreach ($result['questions'] as &$q) {
@@ -390,10 +397,10 @@ function parseXmlSpreadsheet($content) {
                     <label for="code">Code URL <small>(laissez vide pour generation automatique)</small></label>
                     <input type="text" id="code" name="code"
                            value="<?php echo htmlspecialchars($preview['scrutin']['code'] ?? ''); ?>"
-                           placeholder="ex: mon-scrutin-2024" pattern="[a-z0-9\-]*"
+                           placeholder="ex: Vote_Assemblee2024" pattern="[a-zA-Z0-9_\-]*"
                            style="max-width: 400px;">
                     <small style="display: block; margin-top: 5px; color: #666;">
-                        Lettres minuscules, chiffres et tirets uniquement. Ce code definit l'URL d'acces au scrutin.
+                        Lettres, chiffres, tirets et underscores. L'URL sera insensible a la casse.
                     </small>
                 </div>
 
@@ -423,8 +430,8 @@ function parseXmlSpreadsheet($content) {
                 <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
 
                 <div class="form-group">
-                    <label for="xlsfile">Fichier XLS</label>
-                    <input type="file" id="xlsfile" name="xlsfile" accept=".xls,.xml" required>
+                    <label for="xlsfile">Fichier tableur (XLS, XLSX ou XML)</label>
+                    <input type="file" id="xlsfile" name="xlsfile" accept=".xls,.xlsx,.xml" required>
                 </div>
 
                 <div class="form-actions">

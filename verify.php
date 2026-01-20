@@ -274,9 +274,11 @@ if (!empty($ballotSecret)) {
             }
             @page { size: A4; margin: 15mm; }
         }
+        <?php echo getTestBannerCSS(); ?>
     </style>
 </head>
 <body>
+<?php echo renderTestBanner(); ?>
     <div class="container">
         <a href="/" class="back-link no-print">&larr; Retour a l'accueil</a>
 

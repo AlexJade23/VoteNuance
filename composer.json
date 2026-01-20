@@ -1,0 +1,8 @@
+{
+    "name": "votenuance/app",
+    "description": "Vote Nuance Application",
+    "type": "project",
+    "require": {
+        "phpoffice/phpspreadsheet": "^5.4"
+    }
+}
