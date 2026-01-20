@@ -618,6 +618,114 @@ function getQuestionTitlesForLot($scrutinId, $lotNum) {
 }
 
 /**
+ * Récupérer le TOP 3 des résultats pour un scrutin (lot 1, type Vote Nuancé)
+ * Retourne un tableau avec titre, tauxPartisansNet, classement pour chaque candidat
+ */
+function getTop3ResultsForScrutin($scrutinId, $nbMentions = 7) {
+    $pdo = getDbConnection();
+
+    // Récupérer les questions du lot 1, type Vote Nuancé (type 0)
+    $stmt = $pdo->prepare('
+        SELECT id, titre
+        FROM questions
+        WHERE scrutin_id = ? AND lot = 1 AND type_question = 0
+        ORDER BY ordre
+    ');
+    $stmt->execute([$scrutinId]);
+    $questions = $stmt->fetchAll();
+
+    if (empty($questions)) {
+        return [];
+    }
+
+    // Récupérer les mentions pour l'échelle
+    $mentionsList = getMentionsForScale($nbMentions);
+    $mentionsByRang = [];
+    foreach ($mentionsList as $m) {
+        $mentionsByRang[$m['rang']] = $m;
+    }
+
+    $results = [];
+
+    foreach ($questions as $question) {
+        // Récupérer les votes pour cette question
+        $stmt = $pdo->prepare('
+            SELECT vote_mention, COUNT(*) as count
+            FROM bulletins
+            WHERE scrutin_id = ? AND question_id = ? AND est_test = 0 AND vote_mention IS NOT NULL
+            GROUP BY vote_mention
+        ');
+        $stmt->execute([$scrutinId, $question['id']]);
+        $voteCounts = $stmt->fetchAll();
+
+        // Construire le tableau des votes par code
+        $votesByCode = [];
+        foreach ($mentionsList as $m) {
+            $votesByCode[$m['code']] = 0;
+        }
+
+        $total = 0;
+        foreach ($voteCounts as $vc) {
+            $rang = $vc['vote_mention'];
+            $count = (int)$vc['count'];
+            $total += $count;
+            if (isset($mentionsByRang[$rang])) {
+                $code = $mentionsByRang[$rang]['code'];
+                $votesByCode[$code] = $count;
+            }
+        }
+
+        if ($total == 0) {
+            continue; // Pas de votes, on skip
+        }
+
+        // Calculer pour/contre
+        $pour = 0;
+        $contre = 0;
+        foreach ($mentionsList as $m) {
+            $count = $votesByCode[$m['code']] ?? 0;
+            if ($m['est_partisan'] > 0) {
+                $pour += $count;
+            } elseif ($m['est_partisan'] < 0) {
+                $contre += $count;
+            }
+        }
+
+        // Calcul du classement et départages
+        $classement = calculateVoteNuanceScore($votesByCode, $nbMentions);
+        $tiebreakers = calculateTiebreakers($votesByCode, $nbMentions);
+
+        // Taux de partisans net
+        $tauxPartisansNet = round((($pour - $contre) / $total) * 100, 1);
+
+        $results[] = [
+            'titre' => $question['titre'],
+            'classement' => $classement,
+            'niveau1' => $tiebreakers[0],
+            'niveau2' => $tiebreakers[1],
+            'niveau3' => $tiebreakers[2],
+            'tauxPartisansNet' => $tauxPartisansNet,
+            'total' => $total,
+            'votesByCode' => $votesByCode
+        ];
+    }
+
+    // Trier par classement (score + départages)
+    usort($results, function($a, $b) {
+        $cmp = $b['classement'] <=> $a['classement'];
+        if ($cmp !== 0) return $cmp;
+        $cmp = $b['niveau1'] <=> $a['niveau1'];
+        if ($cmp !== 0) return $cmp;
+        $cmp = $b['niveau2'] <=> $a['niveau2'];
+        if ($cmp !== 0) return $cmp;
+        return $b['niveau3'] <=> $a['niveau3'];
+    });
+
+    // Retourner le top 3
+    return array_slice($results, 0, 3);
+}
+
+/**
  * Supprimer les questions d'un scrutin
  */
 function deleteQuestionsByScrutin($scrutinId) {
