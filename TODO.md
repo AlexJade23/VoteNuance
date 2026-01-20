@@ -109,15 +109,54 @@
 - [x] US-019 : Import votes (fusion offline/online, mode ajouter/remplacer)
 - [x] Format XML Spreadsheet (sans dependance externe)
 
-## A faire
-
-### Fonctionnalites en attente
-- [ ] **US-020 : Echelles flexibles (3/5/7 mentions)** - Priorite moyenne
+### Echelles flexibles (Epic 8)
+- [x] **US-020 : Echelles flexibles (3/5/7 mentions)**
   - Choix au niveau du scrutin (pas de la question)
   - 3 mentions : Contre / Sans Avis / Pour
   - 5 mentions : FC / C / SA / P / FP
-  - 7 mentions : AC / FC / PC / SA / PP / FP / AP (actuel)
-  - Fichiers : scrutin-create.php, scrutin-edit.php, vote.php, scrutin-results.php
+  - 7 mentions : AC / FC / PC / SA / PP / FP / AP (defaut)
+  - Fichiers modifies : scrutin-create.php, scrutin-edit.php, vote.php, scrutin-results.php, votes-export.php, functions.php
+  - Migration BDD : colonne nb_mentions dans scrutins
+
+### Issue #1 : Import scrutin - choix du code URL
+- [x] Champ Code URL pre-rempli lors de l'import XLS
+- [x] Validation format (minuscules, chiffres, tirets)
+- [x] Verification unicite du code
+- [x] Generation automatique si champ vide
+
+### Configuration et securite
+- [x] Architecture secrets : dossier cousin ../secret/ hors git
+- [x] config.php charge ../secret/sso.php (prod) ou sso-test.php (test)
+- [x] config.php dans .gitignore (jamais versionne)
+- [x] Bandeau orange test sur toutes les pages (IS_TEST_ENV)
+
+## A tester (sur tst.de-co.fr)
+
+### Export/Import admin (admin-export.php)
+- [ ] Export d'un scrutin avec ses votes
+- [ ] Import du fichier SQL genere
+- [ ] Verification integrite des donnees importees
+
+### Authentification Magic Link (login-magiclink.php)
+- [ ] Demande de lien de connexion par email
+- [ ] Reception et validation du lien
+- [ ] Connexion sans mot de passe
+
+### TOTP / 2FA (totp-verify.php)
+- [ ] Activation 2FA sur un compte
+- [ ] Scan QR code avec app authenticator
+- [ ] Verification code TOTP a la connexion
+
+### Parametres securite (settings/security.php)
+- [ ] Acces a la page settings
+- [ ] Configuration options securite utilisateur
+- [ ] Sauvegarde des preferences
+
+### Export scrutin individuel (export-scrutin.php)
+- [ ] Export d'un scrutin specifique
+- [ ] Format du fichier genere
+
+## A faire
 
 ### Notifications (priorite basse)
 - [ ] US-007 : Email de confirmation de vote
