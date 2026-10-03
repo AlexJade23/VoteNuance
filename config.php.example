@@ -103,4 +103,7 @@ if (session_status() === PHP_SESSION_NONE) {
  * define('STRIPE_SECRET_KEY', 'sk_xxx');
  * define('STRIPE_WEBHOOK_SECRET', 'whsec_xxx');
  * define('STRIPE_PRICE_PER_TOKEN_CENTS', 100);
+ * // Paiement des jetons desactive par defaut (jetons gratuits generes par l'organisateur).
+ * // Mettre a true pour reactiver l'achat via Stripe.
+ * define('STRIPE_ENABLED', false);
  */
