@@ -18,9 +18,8 @@ $SUPERADMIN_IDS = [
     2,  // Superadmin principal
 ];
 
-// Clé secrète pour la signature HMAC (identique sur PROD et TEST)
-// NE PAS MODIFIER - utilisée pour valider les exports/imports
-$HMAC_SECRET_KEY = 'ce664bd8d436b6c940702cbba68f56a1163cb3d081eea6f0cf507825006dc44e';
+// La clé HMAC est définie dans config.php (chargée depuis le fichier secrets)
+// Elle doit être identique sur PROD et TEST pour permettre les transferts
 
 // ============================================================================
 // VÉRIFICATION ACCÈS SUPERADMIN
@@ -192,17 +191,6 @@ function generateExportSQL($scrutinCodes, $targetUserId) {
         $sql[] = "-- ============================================================================";
         $sql[] = "";
 
-        // Supprimer l'ancien scrutin avec ce code s'il existe (ordre FK)
-        $sql[] = "-- Suppression de l'ancien scrutin (si existe)";
-        $sql[] = "SET @old_scrutin_id = (SELECT id FROM scrutins WHERE code = '$code');";
-        $sql[] = "DELETE FROM bulletins WHERE scrutin_id = @old_scrutin_id;";
-        $sql[] = "DELETE FROM emargements WHERE scrutin_id = @old_scrutin_id;";
-        $sql[] = "DELETE FROM jetons WHERE scrutin_id = @old_scrutin_id;";
-        $sql[] = "DELETE FROM reponses_possibles WHERE question_id IN (SELECT id FROM questions WHERE scrutin_id = @old_scrutin_id);";
-        $sql[] = "DELETE FROM questions WHERE scrutin_id = @old_scrutin_id;";
-        $sql[] = "DELETE FROM scrutins WHERE id = @old_scrutin_id;";
-        $sql[] = "";
-
         // SCRUTIN
         $sql[] = "-- SCRUTIN";
         $scrutinValues = [
@@ -350,9 +338,8 @@ function generateExportSQL($scrutinCodes, $targetUserId) {
     $sql[] = "";
 
     // Calculer le HMAC-SHA256 du contenu (avant ajout de la signature)
-    global $HMAC_SECRET_KEY;
     $contentForHash = implode("\n", $sql);
-    $signature = hash_hmac('sha256', $contentForHash, $HMAC_SECRET_KEY);
+    $signature = hash_hmac('sha256', $contentForHash, HMAC_SECRET_KEY);
 
     // Ajouter la signature
     $sql[] = "-- ============================================================================";
@@ -457,7 +444,6 @@ if (isset($_POST['action']) && $_POST['action'] === 'import') {
         }
 
         // Vérifier la signature HMAC-SHA256
-        global $HMAC_SECRET_KEY;
 
         if (preg_match('/-- DECO_SIGNATURE:([a-f0-9]{64})/', $sqlContent, $matches)) {
             $expectedSignature = $matches[1];
@@ -477,7 +463,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'import') {
             if ($signatureIndex !== null) {
                 $contentLines = array_slice($lines, 0, $signatureIndex);
                 $contentForHash = implode("\n", $contentLines);
-                $actualSignature = hash_hmac('sha256', $contentForHash, $HMAC_SECRET_KEY);
+                $actualSignature = hash_hmac('sha256', $contentForHash, HMAC_SECRET_KEY);
 
                 if (!hash_equals($expectedSignature, $actualSignature)) {
                     throw new Exception(
@@ -493,9 +479,37 @@ if (isset($_POST['action']) && $_POST['action'] === 'import') {
             );
         }
 
-        // Exécuter le SQL
+        // Gestion des codes dupliqués : générer de nouveaux codes si nécessaire
         $pdo = getDbConnection();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // Extraire les codes de scrutin du SQL
+        $codesReplaced = [];
+        if (preg_match_all("/INSERT INTO scrutins \([^)]*code[^)]*\)[^V]*VALUES \('([a-z0-9]+)'/i", $sqlContent, $matches)) {
+            foreach ($matches[1] as $oldCode) {
+                // Vérifier si ce code existe déjà
+                $stmt = $pdo->prepare('SELECT COUNT(*) FROM scrutins WHERE code = ?');
+                $stmt->execute([$oldCode]);
+                if ($stmt->fetchColumn() > 0) {
+                    // Générer un nouveau code unique
+                    $baseCode = preg_replace('/_imp\d+$/', '', $oldCode); // Enlever suffix existant
+                    $newCode = $baseCode;
+                    $suffix = 1;
+                    do {
+                        $newCode = $baseCode . '_imp' . $suffix;
+                        $stmt = $pdo->prepare('SELECT COUNT(*) FROM scrutins WHERE code = ?');
+                        $stmt->execute([$newCode]);
+                        $suffix++;
+                    } while ($stmt->fetchColumn() > 0);
+
+                    // Remplacer dans le SQL
+                    $sqlContent = str_replace("'$oldCode'", "'$newCode'", $sqlContent);
+                    $codesReplaced[$oldCode] = $newCode;
+                }
+            }
+        }
+
+        // Exécuter le SQL
 
         // Exécuter les requêtes une par une
         // On nettoie les commentaires de chaque statement avant de l'exécuter
@@ -526,9 +540,17 @@ if (isset($_POST['action']) && $_POST['action'] === 'import') {
             }
             $pdo->commit();
 
+            $codeMsg = '';
+            if (!empty($codesReplaced)) {
+                $codeMsg = " | Codes renommés : " . implode(', ', array_map(
+                    fn($old, $new) => "$old → $new",
+                    array_keys($codesReplaced),
+                    array_values($codesReplaced)
+                ));
+            }
             $importResult = [
                 'success' => true,
-                'message' => "Import réussi : $executed requêtes exécutées",
+                'message' => "Import réussi : $executed requêtes exécutées" . $codeMsg,
                 'filename' => $file['name']
             ];
         } catch (PDOException $e) {
@@ -986,9 +1008,9 @@ if (isset($_POST['action']) && $_POST['action'] === 'import') {
             </script>
         </div>
 
-        <div class="card" style="background: rgba(255,165,0,0.1); border: 1px solid rgba(255,165,0,0.3);">
+        <div class="card" style="background: rgba(40,167,69,0.1); border: 1px solid rgba(40,167,69,0.3);">
             <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px;">
-                <strong>Note :</strong> Les codes des scrutins sont conservés. Si un scrutin avec le même code existe déjà dans la base, il sera <strong>supprimé puis recréé</strong> avec les nouvelles données.
+                <strong>Note :</strong> L'import ajoute de nouveaux scrutins. Si un code existe déjà, un nouveau code unique sera généré automatiquement (ex: <code>moncode</code> → <code>moncode_imp1</code>).
             </p>
         </div>
     </div>
