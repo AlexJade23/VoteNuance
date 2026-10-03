@@ -1162,6 +1162,11 @@ function revokeToken($tokenId, $scrutinId) {
  * @return bool
  */
 function isStripeConfigured() {
+    // Paiement Stripe en stand-by : jetons gratuits generes par l'organisateur.
+    // Pour reactiver, definir STRIPE_ENABLED a true dans config.php.
+    if (!defined('STRIPE_ENABLED') || !STRIPE_ENABLED) {
+        return false;
+    }
     // Verifier que les cles ne sont pas les valeurs par defaut
     if (!defined('STRIPE_SECRET_KEY') || strpos(STRIPE_SECRET_KEY, 'VOTRE_CLE') !== false) {
         return false;

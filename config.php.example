@@ -32,6 +32,10 @@ define('GOOGLE_TOKEN_URL', 'https://oauth2.googleapis.com/token');
 define('MICROSOFT_AUTH_URL', 'https://login.microsoftonline.com/' . MICROSOFT_TENANT . '/oauth2/v2.0/authorize');
 define('MICROSOFT_TOKEN_URL', 'https://login.microsoftonline.com/' . MICROSOFT_TENANT . '/oauth2/v2.0/token');
 
+// Paiement des jetons via Stripe : desactive par defaut (jetons gratuits generes par l'organisateur).
+// Mettre a true (avec les cles STRIPE_*) pour reactiver l'achat.
+define('STRIPE_ENABLED', false);
+
 // Configuration session
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', 1); // HTTPS uniquement

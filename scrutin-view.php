@@ -50,8 +50,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner) {
             } else {
                 $tokenError = 'Impossible de revoquer ce jeton.';
             }
+        } elseif ($action === 'generate' && !$scrutin['est_public'] && !isStripeConfigured()) {
+            // Octroi gratuit de jetons (paiement Stripe en stand-by)
+            $nbJetons = intval($_POST['nb_jetons'] ?? 0);
+            if ($nbJetons < 1 || $nbJetons > 500) {
+                $tokenError = 'Nombre de jetons invalide (1-500).';
+            } else {
+                $generated = generateTokens($scrutin['id'], $nbJetons);
+                // Redirection pour eviter une regeneration au rafraichissement
+                $_SESSION['token_flash'] = count($generated) . ' jeton(s) genere(s) avec succes.';
+                header('Location: ' . strtok($_SERVER['REQUEST_URI'], '#') . '#jetons-section');
+                exit;
+            }
         }
     }
+}
+
+if (!empty($_SESSION['token_flash'])) {
+    $tokenMessage = $_SESSION['token_flash'];
+    unset($_SESSION['token_flash']);
 }
 
 // Recuperer les stats des jetons si scrutin prive
@@ -811,6 +828,14 @@ $typeLabels = [
                     document.getElementById('price-display').textContent = total + ' EUR';
                 }
                 </script>
+<?php else: ?>
+                <form method="POST" action="#jetons-section" class="generate-form" id="generate-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+                    <input type="hidden" name="token_action" value="generate">
+                    <label>Generer</label>
+                    <input type="number" name="nb_jetons" value="10" min="1" max="500" required>
+                    <button type="submit" class="btn btn-success">Generer les jetons</button>
+                </form>
 <?php endif; ?>
             </div>
 
@@ -819,8 +844,8 @@ $typeLabels = [
                 Prix : <?php echo number_format(STRIPE_PRICE_PER_TOKEN_CENTS / 100, 2, ',', ' '); ?> EUR par jeton. Paiement securise par Stripe.
             </div>
 <?php else: ?>
-            <div class="alert alert-warning" style="margin-top: 15px;">
-                Le systeme de paiement n'est pas encore configure. Contactez l'administrateur pour activer l'achat de jetons.
+            <div class="purchase-info">
+                Jetons gratuits : 1 a 500 par generation. Chaque jeton permet un seul vote.
             </div>
 <?php endif; ?>
 
