@@ -997,18 +997,29 @@ $typeLabels = [
 
         .v2-legend {
             margin-top: 8px;
-            font-size: 11px;
+            font-size: 10.5px;
             line-height: 1.15;
             text-align: center;
             color: #5B6B7B;
-            align-items: end;
+            align-items: stretch;
             overflow-wrap: anywhere;
             hyphens: auto;
         }
 
+        .v2-legend span {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 28px;
+            padding: 3px 1px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
         /* Échelle à 7 mentions : colonnes étroites sur mobile */
         .v2-legend.v2-legend-dense {
-            font-size: 9.5px;
+            font-size: 9px;
         }
 
         .v2-list {
@@ -1323,13 +1334,14 @@ $typeLabels = [
                 <div class="v2-title-line">
                     <h1><?php echo htmlspecialchars($scrutin['titre']); ?></h1>
                     <?php if ($nbVoteQuestions > 0): ?>
-                    <span class="v2-counter" id="v2-counter" aria-live="polite"><?php echo $nbAvis; ?> / <?php echo $nbVoteQuestions; ?> avis</span>
+                    <span class="v2-counter" id="v2-counter" aria-live="polite"><?php echo $nbAvis; ?> / <?php echo $nbVoteQuestions; ?> votes</span>
                     <?php endif; ?>
                 </div>
                 <?php if ($nbVoteQuestions > 0): ?>
                 <div class="v2-legend<?php echo count($mentions) > 5 ? ' v2-legend-dense' : ''; ?>" style="--cols: <?php echo count($mentions); ?>;" aria-hidden="true">
                     <?php foreach ($mentions as $mention): ?>
-                    <span><?php echo htmlspecialchars($mention['libelle']); ?></span>
+                    <?php $style = $compactStyles[$mention['code']]; ?>
+                    <span style="background: <?php echo $style['fond']; ?>; color: <?php echo $style['texte']; ?>;"><?php echo htmlspecialchars($mention['libelle']); ?></span>
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
@@ -1493,7 +1505,7 @@ $typeLabels = [
         }
     }
 
-    // Format 2 : sélection d'une mention par bouton et compteur d'avis
+    // Format 2 : sélection d'une mention par bouton et compteur de votes
     document.querySelectorAll('.v2-row').forEach(function(row) {
         const input = row.querySelector('.v2-value');
         const buttons = row.querySelectorAll('.v2-btn');
@@ -1516,7 +1528,7 @@ $typeLabels = [
         inputs.forEach(function(input) {
             if (input.value !== input.dataset.sa) nbAvis++;
         });
-        counter.textContent = nbAvis + ' / ' + inputs.length + ' avis';
+        counter.textContent = nbAvis + ' / ' + inputs.length + ' votes';
     }
 
     // Fermer avec Echap
