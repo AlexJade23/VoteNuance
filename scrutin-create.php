@@ -34,10 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $est_public = isset($_POST['est_public']) ? 1 : 0;
         $ordre_mentions = intval($_POST['ordre_mentions'] ?? 0);
         $nb_mentions = intval($_POST['nb_mentions'] ?? 7);
+        $format_vote = intval($_POST['format_vote'] ?? 1);
 
         // Validation nb_mentions
         if (!in_array($nb_mentions, [3, 5, 7])) {
             $nb_mentions = 7;
+        }
+        if (!in_array($format_vote, [1, 2])) {
+            $format_vote = 1;
         }
 
         // Validation
@@ -103,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'est_public' => $est_public,
                     'ordre_mentions' => $ordre_mentions,
                     'nb_mentions' => $nb_mentions,
+                    'format_vote' => $format_vote,
                     'owner_id' => $user['id']
                 ]);
 
@@ -701,6 +706,18 @@ $csrfToken = generateCsrfToken();
                     <small style="display: block; margin-top: 5px; color: #666;">
                         Ce choix s'applique a toutes les questions Vote Nuance du scrutin.
                     </small>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Format de la page de vote</label>
+                    <select name="format_vote" style="max-width: 400px;">
+                        <option value="1" <?php echo ($_POST['format_vote'] ?? 1) == 1 ? 'selected' : ''; ?>>
+                            Format 1 : classique (une carte par question)
+                        </option>
+                        <option value="2" <?php echo ($_POST['format_vote'] ?? 1) == 2 ? 'selected' : ''; ?>>
+                            Format 2 : compact, mobile first (une ligne par question)
+                        </option>
+                    </select>
                 </div>
 
                 <div class="form-group" style="margin-top: 20px;">

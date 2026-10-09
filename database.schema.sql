@@ -114,6 +114,8 @@ CREATE TABLE scrutins (
     est_archive TINYINT(1) DEFAULT 0,
     ordre_mentions TINYINT(1) DEFAULT 0
         COMMENT '0=Contre vers Pour, 1=Pour vers Contre',
+    format_vote TINYINT UNSIGNED DEFAULT 1
+        COMMENT 'Format de la page de vote: 1 classique, 2 mobile first',
 
     -- Notifications
     type_notification TINYINT UNSIGNED DEFAULT 0,
