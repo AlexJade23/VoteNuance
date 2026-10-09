@@ -1064,6 +1064,8 @@ $typeLabels = [
             display: flex;
             align-items: center;
             gap: 8px;
+            flex: 0 1 auto;
+            max-width: 50%;
             min-width: 0;
         }
 
@@ -1087,9 +1089,13 @@ $typeLabels = [
             color: #dc3545;
         }
 
+        /* Le parti occupe tout l'espace restant, texte justifié (dernière ligne à droite) */
         .v2-parti {
-            max-width: 55%;
-            text-align: right;
+            flex: 1 1 0;
+            min-width: 0;
+            text-align: justify;
+            text-align-last: right;
+            hyphens: auto;
             font-size: 13px;
             line-height: 1.3;
             color: #5B6B7B;
