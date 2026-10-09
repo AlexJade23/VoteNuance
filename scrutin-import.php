@@ -77,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'est_public' => $data['scrutin']['est_public'] ?? 0,
                     'ordre_mentions' => $data['scrutin']['ordre_mentions'] ?? 0,
                     'format_vote' => $data['scrutin']['format_vote'] ?? 1,
+                    'palette_vote' => $data['scrutin']['palette_vote'] ?? 1,
                     'owner_id' => $user['id']
                 ]);
 
@@ -182,6 +183,7 @@ function parseSpreadsheetFile($filePath) {
                         case 'affiche resultats': $result['scrutin']['affiche_resultats'] = ($value === 'Oui') ? 1 : 0; break;
                         case 'est public': $result['scrutin']['est_public'] = ($value === 'Oui') ? 1 : 0; break;
                         case 'ordre mentions': $result['scrutin']['ordre_mentions'] = intval($value); break;
+                        case 'couleurs vote': $result['scrutin']['palette_vote'] = array_key_exists(intval($value), getVotePalettes()) ? intval($value) : 1; break;
                         case 'format vote': $result['scrutin']['format_vote'] = in_array(intval($value), [1, 2]) ? intval($value) : 1; break;
                     }
                 }

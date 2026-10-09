@@ -136,6 +136,10 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     <Cell ss:StyleID="Bold"><Data ss:Type="String">Format vote</Data></Cell>
     <Cell><Data ss:Type="Number"><?php echo intval($scrutin['format_vote'] ?? 1); ?></Data></Cell>
    </Row>
+   <Row>
+    <Cell ss:StyleID="Bold"><Data ss:Type="String">Couleurs vote</Data></Cell>
+    <Cell><Data ss:Type="Number"><?php echo intval($scrutin['palette_vote'] ?? 1); ?></Data></Cell>
+   </Row>
   </Table>
  </Worksheet>
 

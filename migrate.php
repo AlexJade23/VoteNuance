@@ -58,6 +58,22 @@ try {
         echo "<p style='color:green'>✓ Colonne format_vote ajoutee avec succes!</p>\n";
     }
 
+    // Migration 006 : jeu de couleurs du format de vote 2 (issue #16)
+    $stmt = $pdo->query("SHOW COLUMNS FROM scrutins LIKE 'palette_vote'");
+    if ($stmt->rowCount() > 0) {
+        echo "<p style='color:green'>✓ La colonne palette_vote existe deja.</p>\n";
+    } else {
+        echo "<p>Migration 006: Ajout de la colonne palette_vote...</p>\n";
+
+        $pdo->exec("
+            ALTER TABLE scrutins
+            ADD COLUMN palette_vote TINYINT UNSIGNED DEFAULT 1
+            COMMENT 'Couleurs du format de vote 2: 1 bleu/orange, 2 classique, 3 violet/vert'
+        ");
+
+        echo "<p style='color:green'>✓ Colonne palette_vote ajoutee avec succes!</p>\n";
+    }
+
     // Afficher la structure actuelle de la table scrutins
     echo "<h2>Structure de la table scrutins:</h2>\n";
     echo "<pre>\n";

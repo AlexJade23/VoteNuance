@@ -54,41 +54,110 @@ function getMentionsForScale($nbMentions = 7) {
 }
 
 /**
- * Libellés courts et couleurs des mentions pour le format de vote 2 (mobile-first)
+ * Jeux de couleurs disponibles pour le format de vote 2 (mobile first)
+ *
+ * Pour chaque échelle, les couleurs sont listées dans l'ordre des rangs (Contre vers Pour),
+ * chacune sous la forme [fond, texte]. Un jeu sans couleurs (null) reprend celles du format 1.
+ *
+ * @return array Indexé par identifiant de jeu : ['nom', 'couleurs']
+ */
+function getVotePalettes() {
+    $sansAvis = ['#475569', '#FFFFFF'];
+    return [
+        1 => [
+            'nom' => 'Bleu / orange',
+            'couleurs' => [
+                3 => [['#9A3412', '#FFFFFF'], $sansAvis, ['#1D4ED8', '#FFFFFF']],
+                5 => [['#9A3412', '#FFFFFF'], ['#FED7AA', '#431407'], $sansAvis, ['#BFDBFE', '#172554'], ['#1D4ED8', '#FFFFFF']],
+                7 => [['#7C2D12', '#FFFFFF'], ['#C2410C', '#FFFFFF'], ['#FED7AA', '#431407'], $sansAvis,
+                      ['#BFDBFE', '#172554'], ['#2563EB', '#FFFFFF'], ['#1E3A8A', '#FFFFFF']],
+            ],
+        ],
+        2 => [
+            'nom' => 'Classique (couleurs du format 1)',
+            'couleurs' => null,
+        ],
+        3 => [
+            'nom' => 'Violet / vert',
+            'couleurs' => [
+                3 => [['#762A83', '#FFFFFF'], $sansAvis, ['#1B7837', '#FFFFFF']],
+                5 => [['#762A83', '#FFFFFF'], ['#C2A5CF', '#2D0A33'], $sansAvis, ['#A6DBA0', '#0B3D12'], ['#1B7837', '#FFFFFF']],
+                7 => [['#40004B', '#FFFFFF'], ['#762A83', '#FFFFFF'], ['#C2A5CF', '#2D0A33'], $sansAvis,
+                      ['#A6DBA0', '#0B3D12'], ['#1B7837', '#FFFFFF'], ['#00441B', '#FFFFFF']],
+            ],
+        ],
+    ];
+}
+
+/**
+ * Couleur de texte lisible (blanc ou gris foncé) sur un fond donné
+ *
+ * @param string $hex Couleur de fond (#RRGGBB)
+ * @return string Couleur de texte
+ */
+function getContrastTextColor($hex) {
+    $lin = function ($c) {
+        $c = $c / 255;
+        return $c <= 0.03928 ? $c / 12.92 : pow(($c + 0.055) / 1.055, 2.4);
+    };
+    $l = 0.2126 * $lin(hexdec(substr($hex, 1, 2)))
+       + 0.7152 * $lin(hexdec(substr($hex, 3, 2)))
+       + 0.0722 * $lin(hexdec(substr($hex, 5, 2)));
+    // Contraste avec le blanc d'au moins 4.5:1, sinon texte foncé
+    return (1.05 / ($l + 0.05)) >= 4.5 ? '#FFFFFF' : '#1F2937';
+}
+
+/**
+ * Libellés courts et couleurs des mentions pour le format de vote 2 (mobile first)
  *
  * @param int $nbMentions Nombre de mentions (3, 5 ou 7)
+ * @param int $palette Identifiant du jeu de couleurs (voir getVotePalettes)
  * @return array Indexé par code de mention : ['court', 'fond', 'texte']
  */
-function getMentionsCompactStyles($nbMentions = 7) {
-    switch ($nbMentions) {
-        case 3:
-            return [
-                'C'  => ['court' => '−', 'fond' => '#9A3412', 'texte' => '#FFFFFF'],
-                'SA' => ['court' => '○', 'fond' => '#475569', 'texte' => '#FFFFFF'],
-                'P'  => ['court' => '+', 'fond' => '#1D4ED8', 'texte' => '#FFFFFF'],
-            ];
+function getMentionsCompactStyles($nbMentions = 7, $palette = 1) {
+    $libellesCourts = [
+        3 => ['−', '○', '+'],
+        5 => ['−−', '−', '○', '+', '++'],
+        7 => ['−−−', '−−', '−', '○', '+', '++', '+++'],
+    ];
+    $mentions = getMentionsForScale($nbMentions);
+    $nb = count($mentions);
+    $palettes = getVotePalettes();
+    $couleurs = ($palettes[$palette] ?? $palettes[1])['couleurs'];
 
-        case 5:
-            return [
-                'FC' => ['court' => '−−', 'fond' => '#9A3412', 'texte' => '#FFFFFF'],
-                'C'  => ['court' => '−',  'fond' => '#FED7AA', 'texte' => '#431407'],
-                'SA' => ['court' => '○',  'fond' => '#475569', 'texte' => '#FFFFFF'],
-                'P'  => ['court' => '+',  'fond' => '#BFDBFE', 'texte' => '#172554'],
-                'FP' => ['court' => '++', 'fond' => '#1D4ED8', 'texte' => '#FFFFFF'],
-            ];
-
-        case 7:
-        default:
-            return [
-                'AC' => ['court' => '−−−', 'fond' => '#7C2D12', 'texte' => '#FFFFFF'],
-                'FC' => ['court' => '−−',  'fond' => '#C2410C', 'texte' => '#FFFFFF'],
-                'PC' => ['court' => '−',   'fond' => '#FED7AA', 'texte' => '#431407'],
-                'SA' => ['court' => '○',   'fond' => '#475569', 'texte' => '#FFFFFF'],
-                'PP' => ['court' => '+',   'fond' => '#BFDBFE', 'texte' => '#172554'],
-                'FP' => ['court' => '++',  'fond' => '#2563EB', 'texte' => '#FFFFFF'],
-                'AP' => ['court' => '+++', 'fond' => '#1E3A8A', 'texte' => '#FFFFFF'],
-            ];
+    $styles = [];
+    foreach ($mentions as $i => $m) {
+        if ($couleurs === null) {
+            $fond = $m['couleur'];
+            $texte = getContrastTextColor($fond);
+        } else {
+            [$fond, $texte] = $couleurs[$nb][$i];
+        }
+        $styles[$m['code']] = ['court' => $libellesCourts[$nb][$i], 'fond' => $fond, 'texte' => $texte];
     }
+    return $styles;
+}
+
+/**
+ * Choix du jeu de couleurs (format 2) avec aperçu, pour les écrans de création / modification
+ *
+ * @param int $selected Jeu sélectionné
+ * @return string HTML
+ */
+function renderPaletteChoices($selected = 1) {
+    $html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+    foreach (getVotePalettes() as $id => $palette) {
+        $html .= '<label style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; cursor: pointer;">'
+            . '<input type="radio" name="palette_vote" value="' . $id . '"' . ($id == $selected ? ' checked' : '') . '>'
+            . '<span style="display: inline-flex; gap: 3px;" aria-hidden="true">';
+        foreach (getMentionsCompactStyles(5, $id) as $style) {
+            $html .= '<span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 24px;'
+                . ' border-radius: 4px; font-size: 12px; font-weight: 700; background: ' . $style['fond'] . '; color: ' . $style['texte'] . ';">'
+                . $style['court'] . '</span>';
+        }
+        $html .= '</span><span>' . htmlspecialchars($palette['nom']) . '</span></label>';
+    }
+    return $html . '</div>';
 }
 
 /**
@@ -430,8 +499,8 @@ function createScrutin($data) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('
         INSERT INTO scrutins (code, titre, resume, notice, image_url, debut_at, fin_at,
-            nb_participants_attendus, nb_gagnants, affiche_resultats, est_public, ordre_mentions, nb_mentions, format_vote, owner_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            nb_participants_attendus, nb_gagnants, affiche_resultats, est_public, ordre_mentions, nb_mentions, format_vote, palette_vote, owner_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
         $data['code'],
@@ -448,6 +517,7 @@ function createScrutin($data) {
         $data['ordre_mentions'] ?? 0,
         $data['nb_mentions'] ?? 7,
         $data['format_vote'] ?? 1,
+        $data['palette_vote'] ?? 1,
         $data['owner_id']
     ]);
     return $pdo->lastInsertId();
@@ -499,7 +569,7 @@ function updateScrutin($id, $data) {
     $stmt = $pdo->prepare('
         UPDATE scrutins SET
             titre = ?, resume = ?, notice = ?, image_url = ?, debut_at = ?, fin_at = ?,
-            nb_participants_attendus = ?, nb_gagnants = ?, affiche_resultats = ?, est_public = ?, ordre_mentions = ?, nb_mentions = ?, format_vote = ?
+            nb_participants_attendus = ?, nb_gagnants = ?, affiche_resultats = ?, est_public = ?, ordre_mentions = ?, nb_mentions = ?, format_vote = ?, palette_vote = ?
         WHERE id = ?
     ');
     $stmt->execute([
@@ -516,6 +586,7 @@ function updateScrutin($id, $data) {
         $data['ordre_mentions'] ?? 0,
         $data['nb_mentions'] ?? 7,
         $data['format_vote'] ?? 1,
+        $data['palette_vote'] ?? 1,
         $id
     ]);
 }

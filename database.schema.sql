@@ -116,6 +116,8 @@ CREATE TABLE scrutins (
         COMMENT '0=Contre vers Pour, 1=Pour vers Contre',
     format_vote TINYINT UNSIGNED DEFAULT 1
         COMMENT 'Format de la page de vote: 1 classique, 2 mobile first',
+    palette_vote TINYINT UNSIGNED DEFAULT 1
+        COMMENT 'Couleurs du format de vote 2: 1 bleu/orange, 2 classique, 3 violet/vert',
 
     -- Notifications
     type_notification TINYINT UNSIGNED DEFAULT 0,
