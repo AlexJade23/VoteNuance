@@ -1052,20 +1052,22 @@ $typeLabels = [
             background: #EEF2F6;
         }
 
+        /* Titre de la question centré (ex. « Candidat - Parti »), description éventuelle dessous */
         .v2-row-head {
             display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 12px;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
             margin-bottom: 6px;
+            text-align: center;
         }
 
         .v2-nom-wrap {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-            flex: 0 1 auto;
-            min-width: 0;
+            max-width: 100%;
         }
 
         .v2-thumb {
@@ -1088,13 +1090,7 @@ $typeLabels = [
             color: #dc3545;
         }
 
-        /* Le parti occupe tout l'espace restant, texte justifié jusqu'à la dernière ligne */
         .v2-parti {
-            flex: 1 1 0;
-            min-width: 0;
-            text-align: justify;
-            text-align-last: justify;
-            hyphens: auto;
             font-size: 13px;
             line-height: 1.3;
             color: #5B6B7B;
