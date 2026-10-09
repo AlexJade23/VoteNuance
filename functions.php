@@ -54,6 +54,44 @@ function getMentionsForScale($nbMentions = 7) {
 }
 
 /**
+ * Libellés courts et couleurs des mentions pour le format de vote 2 (mobile-first)
+ *
+ * @param int $nbMentions Nombre de mentions (3, 5 ou 7)
+ * @return array Indexé par code de mention : ['court', 'fond', 'texte']
+ */
+function getMentionsCompactStyles($nbMentions = 7) {
+    switch ($nbMentions) {
+        case 3:
+            return [
+                'C'  => ['court' => '−', 'fond' => '#9A3412', 'texte' => '#FFFFFF'],
+                'SA' => ['court' => '○', 'fond' => '#475569', 'texte' => '#FFFFFF'],
+                'P'  => ['court' => '+', 'fond' => '#1D4ED8', 'texte' => '#FFFFFF'],
+            ];
+
+        case 5:
+            return [
+                'FC' => ['court' => '−−', 'fond' => '#9A3412', 'texte' => '#FFFFFF'],
+                'C'  => ['court' => '−',  'fond' => '#FED7AA', 'texte' => '#431407'],
+                'SA' => ['court' => '○',  'fond' => '#475569', 'texte' => '#FFFFFF'],
+                'P'  => ['court' => '+',  'fond' => '#BFDBFE', 'texte' => '#172554'],
+                'FP' => ['court' => '++', 'fond' => '#1D4ED8', 'texte' => '#FFFFFF'],
+            ];
+
+        case 7:
+        default:
+            return [
+                'AC' => ['court' => '−−−', 'fond' => '#7C2D12', 'texte' => '#FFFFFF'],
+                'FC' => ['court' => '−−',  'fond' => '#C2410C', 'texte' => '#FFFFFF'],
+                'PC' => ['court' => '−',   'fond' => '#FED7AA', 'texte' => '#431407'],
+                'SA' => ['court' => '○',   'fond' => '#475569', 'texte' => '#FFFFFF'],
+                'PP' => ['court' => '+',   'fond' => '#BFDBFE', 'texte' => '#172554'],
+                'FP' => ['court' => '++',  'fond' => '#2563EB', 'texte' => '#FFFFFF'],
+                'AP' => ['court' => '+++', 'fond' => '#1E3A8A', 'texte' => '#FFFFFF'],
+            ];
+    }
+}
+
+/**
  * Retourne le libellé court de l'échelle
  *
  * @param int $nbMentions Nombre de mentions (3, 5 ou 7)
@@ -392,8 +430,8 @@ function createScrutin($data) {
     $pdo = getDbConnection();
     $stmt = $pdo->prepare('
         INSERT INTO scrutins (code, titre, resume, notice, image_url, debut_at, fin_at,
-            nb_participants_attendus, nb_gagnants, affiche_resultats, est_public, ordre_mentions, nb_mentions, owner_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            nb_participants_attendus, nb_gagnants, affiche_resultats, est_public, ordre_mentions, nb_mentions, format_vote, owner_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
         $data['code'],
@@ -409,6 +447,7 @@ function createScrutin($data) {
         $data['est_public'],
         $data['ordre_mentions'] ?? 0,
         $data['nb_mentions'] ?? 7,
+        $data['format_vote'] ?? 1,
         $data['owner_id']
     ]);
     return $pdo->lastInsertId();
@@ -460,7 +499,7 @@ function updateScrutin($id, $data) {
     $stmt = $pdo->prepare('
         UPDATE scrutins SET
             titre = ?, resume = ?, notice = ?, image_url = ?, debut_at = ?, fin_at = ?,
-            nb_participants_attendus = ?, nb_gagnants = ?, affiche_resultats = ?, est_public = ?, ordre_mentions = ?, nb_mentions = ?
+            nb_participants_attendus = ?, nb_gagnants = ?, affiche_resultats = ?, est_public = ?, ordre_mentions = ?, nb_mentions = ?, format_vote = ?
         WHERE id = ?
     ');
     $stmt->execute([
@@ -476,6 +515,7 @@ function updateScrutin($id, $data) {
         $data['est_public'],
         $data['ordre_mentions'] ?? 0,
         $data['nb_mentions'] ?? 7,
+        $data['format_vote'] ?? 1,
         $id
     ]);
 }

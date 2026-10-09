@@ -56,6 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($nb_mentions, [3, 5, 7])) {
             $nb_mentions = 7;
         }
+        $format_vote = intval($_POST['format_vote'] ?? 1);
+        if (!in_array($format_vote, [1, 2])) {
+            $format_vote = 1;
+        }
 
         if (empty($titre)) {
             $errors[] = 'Le titre est obligatoire';
@@ -106,7 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'affiche_resultats' => $affiche_resultats,
                     'est_public' => $est_public,
                     'ordre_mentions' => $ordre_mentions,
-                    'nb_mentions' => $nb_mentions
+                    'nb_mentions' => $nb_mentions,
+                    'format_vote' => $format_vote
                 ]);
 
                 // Supprimer les anciennes questions et recréer
@@ -684,6 +689,18 @@ $csrfToken = generateCsrfToken();
                             Ce choix s'applique a toutes les questions Vote Nuance du scrutin.
                         </small>
                     <?php endif; ?>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Format de la page de vote</label>
+                    <select name="format_vote" style="max-width: 400px;">
+                        <option value="1" <?php echo ($scrutin['format_vote'] ?? 1) == 1 ? 'selected' : ''; ?>>
+                            Format 1 : classique (une carte par question)
+                        </option>
+                        <option value="2" <?php echo ($scrutin['format_vote'] ?? 1) == 2 ? 'selected' : ''; ?>>
+                            Format 2 : compact, mobile first (une ligne par question)
+                        </option>
+                    </select>
                 </div>
 
                 <div class="form-group" style="margin-top: 20px;">

@@ -76,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'affiche_resultats' => $data['scrutin']['affiche_resultats'] ?? 0,
                     'est_public' => $data['scrutin']['est_public'] ?? 0,
                     'ordre_mentions' => $data['scrutin']['ordre_mentions'] ?? 0,
+                    'format_vote' => $data['scrutin']['format_vote'] ?? 1,
                     'owner_id' => $user['id']
                 ]);
 
@@ -181,6 +182,7 @@ function parseSpreadsheetFile($filePath) {
                         case 'affiche resultats': $result['scrutin']['affiche_resultats'] = ($value === 'Oui') ? 1 : 0; break;
                         case 'est public': $result['scrutin']['est_public'] = ($value === 'Oui') ? 1 : 0; break;
                         case 'ordre mentions': $result['scrutin']['ordre_mentions'] = intval($value); break;
+                        case 'format vote': $result['scrutin']['format_vote'] = in_array(intval($value), [1, 2]) ? intval($value) : 1; break;
                     }
                 }
             }

@@ -54,5 +54,13 @@ ALTER TABLE scrutins ADD COLUMN nb_mentions TINYINT UNSIGNED DEFAULT 7
     COMMENT 'Nombre de mentions: 3, 5 ou 7 (defaut: 7)';
 
 -- ============================================================================
+-- Migration 005 - 2026-10-09 - Format de la page de vote (issue #16)
+-- ============================================================================
+-- 1 = format classique (une carte par question), 2 = format compact mobile first
+
+ALTER TABLE scrutins ADD COLUMN format_vote TINYINT UNSIGNED DEFAULT 1
+    COMMENT 'Format de la page de vote: 1 classique, 2 mobile first (defaut: 1)';
+
+-- ============================================================================
 -- FIN DES MIGRATIONS
 -- ============================================================================

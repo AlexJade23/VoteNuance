@@ -42,6 +42,22 @@ try {
         echo "<p style='color:green'>✓ Colonne nb_mentions ajoutee avec succes!</p>\n";
     }
 
+    // Migration 005 : format de la page de vote (issue #16)
+    $stmt = $pdo->query("SHOW COLUMNS FROM scrutins LIKE 'format_vote'");
+    if ($stmt->rowCount() > 0) {
+        echo "<p style='color:green'>✓ La colonne format_vote existe deja.</p>\n";
+    } else {
+        echo "<p>Migration 005: Ajout de la colonne format_vote...</p>\n";
+
+        $pdo->exec("
+            ALTER TABLE scrutins
+            ADD COLUMN format_vote TINYINT UNSIGNED DEFAULT 1
+            COMMENT 'Format de la page de vote: 1 classique, 2 mobile first (defaut: 1)'
+        ");
+
+        echo "<p style='color:green'>✓ Colonne format_vote ajoutee avec succes!</p>\n";
+    }
+
     // Afficher la structure actuelle de la table scrutins
     echo "<h2>Structure de la table scrutins:</h2>\n";
     echo "<pre>\n";

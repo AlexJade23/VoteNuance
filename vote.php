@@ -31,6 +31,10 @@ if ($scrutin['ordre_mentions'] ?? 0) {
     $mentions = array_reverse($mentions);
 }
 
+// Format de la page de vote : 1 = classique, 2 = compact mobile first
+$formatVote = intval($scrutin['format_vote'] ?? 1);
+$compactStyles = getMentionsCompactStyles($nbMentions);
+
 // Vérifier si le scrutin est ouvert
 $now = time();
 $debut = $scrutin['debut_at'] ? strtotime($scrutin['debut_at']) : null;
@@ -220,6 +224,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canSubmitVote) {
 
 $csrfToken = generateCsrfToken();
 
+// Le format compact ne s'applique qu'au formulaire de vote (pas au jeton, récépissé, etc.)
+$showVoteForm = (!$requiresToken || $tokenInfo) && $canVote && !$success;
+$isCompact = $showVoteForm && $formatVote === 2;
+
+if ($isCompact) {
+    $saRang = null;
+    $validRangs = [];
+    foreach ($mentions as $m) {
+        $validRangs[] = $m['rang'];
+        if ($m['code'] === 'SA') {
+            $saRang = $m['rang'];
+        }
+    }
+    // Valeur initiale de chaque question : choix déjà saisi (si erreur de validation) sinon Sans Avis
+    $compactValues = [];
+    $nbAvis = 0;
+    $nbVoteQuestions = 0;
+    foreach ($questions as $q) {
+        if ($q['type_question'] != 0) continue;
+        $nbVoteQuestions++;
+        $posted = intval($_POST['vote'][$q['id']] ?? 0);
+        $compactValues[$q['id']] = in_array($posted, $validRangs, true) ? $posted : $saRang;
+        if ($compactValues[$q['id']] !== $saRang) {
+            $nbAvis++;
+        }
+    }
+}
+
 $typeLabels = [
     0 => 'Vote nuancé',
     1 => 'Réponse ouverte',
@@ -232,7 +264,7 @@ $typeLabels = [
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0<?php echo $isCompact ? ', viewport-fit=cover' : ''; ?>">
     <title><?php echo htmlspecialchars($scrutin['titre']); ?> - Voter</title>
     <style>
         * {
@@ -906,12 +938,250 @@ $typeLabels = [
                 margin: 15mm;
             }
         }
+        /* ===== Format 2 : compact, mobile first ===== */
+        body.v2 {
+            padding: 0;
+            background: #EEF2F6;
+        }
+
+        body.v2 .test-banner {
+            position: static;
+        }
+
+        .v2-form {
+            max-width: 720px;
+            margin: 0 auto;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            background: #FFFFFF;
+        }
+
+        .v2-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #FFFFFF;
+            border-bottom: 1px solid #DDE3EA;
+            padding: 10px 12px 8px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+        }
+
+        .v2-title-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .v2-header h1 {
+            font-size: 18px;
+            color: #0F172A;
+            line-height: 1.25;
+        }
+
+        .v2-counter {
+            font-size: 14px;
+            color: #5B6B7B;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .v2-grid,
+        .v2-legend {
+            display: grid;
+            grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+            gap: 4px;
+        }
+
+        .v2-legend {
+            margin-top: 8px;
+            font-size: 11px;
+            line-height: 1.15;
+            text-align: center;
+            color: #5B6B7B;
+            align-items: end;
+            overflow-wrap: anywhere;
+            hyphens: auto;
+        }
+
+        /* Échelle à 7 mentions : colonnes étroites sur mobile */
+        .v2-legend.v2-legend-dense {
+            font-size: 9.5px;
+        }
+
+        .v2-list {
+            flex: 1;
+        }
+
+        .v2-intro {
+            padding: 16px 12px;
+            color: #333;
+            line-height: 1.5;
+            border-bottom: 1px solid #DDE3EA;
+        }
+
+        .v2-intro .clickable-image {
+            margin-bottom: 12px;
+        }
+
+        .v2-intro .notice,
+        .v2-intro .error-box {
+            margin: 12px 0 0;
+        }
+
+        .v2-row {
+            padding: 10px 12px;
+            background: #FFFFFF;
+            border-bottom: 1px solid #DDE3EA;
+        }
+
+        .v2-row.v2-alt {
+            background: #EEF2F6;
+        }
+
+        .v2-row-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .v2-nom-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .v2-thumb {
+            width: 36px;
+            height: 36px;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            flex-shrink: 0;
+            align-self: center;
+        }
+
+        .v2-nom {
+            font-weight: 700;
+            font-size: 16px;
+            color: #0F172A;
+        }
+
+        .v2-nom .required {
+            color: #dc3545;
+        }
+
+        .v2-parti {
+            max-width: 55%;
+            text-align: right;
+            font-size: 13px;
+            line-height: 1.3;
+            color: #5B6B7B;
+        }
+
+        .v2-btn {
+            height: 44px;
+            min-width: 0;
+            border: 2px solid #D5DCE4;
+            border-radius: 8px;
+            background: #FFFFFF;
+            color: #5B6B7B;
+            font: inherit;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .v2-btn[aria-pressed="true"] {
+            border-color: #0F172A;
+            background: var(--sel-bg);
+            color: var(--sel-fg);
+        }
+
+        .v2-btn:focus-visible {
+            outline: 3px solid #2563EB;
+            outline-offset: 2px;
+        }
+
+        .v2-other {
+            padding: 12px;
+            border-bottom: 1px solid #DDE3EA;
+        }
+
+        .v2-other .question-card {
+            margin-bottom: 0;
+        }
+
+        .v2-footer {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            background: #FFFFFF;
+            border-top: 1px solid #DDE3EA;
+            padding: 10px 12px;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -2px 6px rgba(15, 23, 42, 0.06);
+        }
+
+        .v2-footer .btn {
+            width: 100%;
+            min-height: 48px;
+            padding: 12px;
+        }
+
+        /* Desktop : colonne centrée, mêmes comportements */
+        @media (min-width: 760px) {
+            body.v2 {
+                padding: 0 20px;
+            }
+
+            .v2-form {
+                box-shadow: 0 0 0 1px #DDE3EA, 0 4px 24px rgba(15, 23, 42, 0.08);
+            }
+
+            .v2-header,
+            .v2-intro,
+            .v2-row,
+            .v2-other,
+            .v2-footer {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+
+            .v2-header h1 {
+                font-size: 22px;
+            }
+
+            .v2-legend,
+            .v2-legend.v2-legend-dense {
+                font-size: 12px;
+            }
+
+            .v2-btn:hover:not([aria-pressed="true"]) {
+                border-color: #94A3B8;
+                color: #0F172A;
+            }
+
+            .v2-footer .btn {
+                width: auto;
+                min-width: 280px;
+                display: block;
+                margin: 0 auto;
+            }
+        }
         <?php echo getTestBannerCSS(); ?>
     </style>
 </head>
-<body>
+<body<?php echo $isCompact ? ' class="v2"' : ''; ?>>
 <?php echo renderTestBanner(); ?>
-    <div class="container">
+    <div class="<?php echo $isCompact ? 'v2-page' : 'container'; ?>">
+        <?php if (!$isCompact): ?>
         <div class="header">
             <?php if (!empty($scrutin['image_url'])): ?>
             <img src="<?php echo htmlspecialchars($scrutin['image_url']); ?>" alt="" class="clickable-image" onclick="openLightbox(this.src)">
@@ -926,6 +1196,7 @@ $typeLabels = [
         <div class="notice">
             <?php echo nl2br(htmlspecialchars($scrutin['notice'])); ?>
         </div>
+        <?php endif; ?>
         <?php endif; ?>
 
         <?php
@@ -1040,6 +1311,96 @@ $typeLabels = [
             </div>
         </div>
 
+        <?php elseif ($isCompact): ?>
+        <!-- Format 2 : compact, mobile first -->
+        <form method="POST" class="v2-form">
+            <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+            <?php if ($tokenInfo): ?>
+            <input type="hidden" name="jeton" value="<?php echo htmlspecialchars($tokenCode); ?>">
+            <?php endif; ?>
+
+            <header class="v2-header">
+                <div class="v2-title-line">
+                    <h1><?php echo htmlspecialchars($scrutin['titre']); ?></h1>
+                    <?php if ($nbVoteQuestions > 0): ?>
+                    <span class="v2-counter" id="v2-counter" aria-live="polite"><?php echo $nbAvis; ?> / <?php echo $nbVoteQuestions; ?> avis</span>
+                    <?php endif; ?>
+                </div>
+                <?php if ($nbVoteQuestions > 0): ?>
+                <div class="v2-legend<?php echo count($mentions) > 5 ? ' v2-legend-dense' : ''; ?>" style="--cols: <?php echo count($mentions); ?>;" aria-hidden="true">
+                    <?php foreach ($mentions as $mention): ?>
+                    <span><?php echo htmlspecialchars($mention['libelle']); ?></span>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+            </header>
+
+            <div class="v2-list">
+                <?php if (!empty($scrutin['image_url']) || $scrutin['resume'] || $scrutin['notice'] || !empty($errors)): ?>
+                <div class="v2-intro">
+                    <?php if (!empty($scrutin['image_url'])): ?>
+                    <img src="<?php echo htmlspecialchars($scrutin['image_url']); ?>" alt="" class="clickable-image" onclick="openLightbox(this.src)">
+                    <?php endif; ?>
+                    <?php if ($scrutin['resume']): ?>
+                    <p><?php echo nl2br(htmlspecialchars($scrutin['resume'])); ?></p>
+                    <?php endif; ?>
+                    <?php if ($scrutin['notice']): ?>
+                    <div class="notice"><?php echo nl2br(htmlspecialchars($scrutin['notice'])); ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($errors)): ?>
+                    <div class="error-box" role="alert">
+                        <ul>
+                            <?php foreach ($errors as $error): ?>
+                            <li><?php echo htmlspecialchars($error); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+
+                <?php $rowIndex = 0; ?>
+                <?php foreach ($questions as $i => $question): ?>
+                <?php if ($question['type_question'] == 0): ?>
+                <?php $qid = $question['id']; ?>
+                <div class="v2-row<?php echo ($rowIndex++ % 2) ? ' v2-alt' : ''; ?>" role="group" aria-labelledby="v2-nom-<?php echo $qid; ?>">
+                    <div class="v2-row-head">
+                        <span class="v2-nom-wrap">
+                            <?php if (!empty($question['image_url'])): ?>
+                            <img src="<?php echo htmlspecialchars($question['image_url']); ?>" alt="" class="v2-thumb" onclick="openLightbox(this.src)">
+                            <?php endif; ?>
+                            <span class="v2-nom" id="v2-nom-<?php echo $qid; ?>"><?php echo htmlspecialchars($question['titre']); ?><?php if ($question['est_obligatoire']): ?><span class="required">*</span><?php endif; ?></span>
+                        </span>
+                        <?php if ($question['question']): ?>
+                        <span class="v2-parti"><?php echo nl2br(htmlspecialchars($question['question'])); ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <input type="hidden" class="v2-value" name="vote[<?php echo $qid; ?>]"
+                           value="<?php echo $compactValues[$qid]; ?>" data-sa="<?php echo $saRang; ?>">
+                    <div class="v2-grid" style="--cols: <?php echo count($mentions); ?>;">
+                        <?php foreach ($mentions as $mention): ?>
+                        <?php $style = $compactStyles[$mention['code']]; ?>
+                        <button type="button" class="v2-btn"
+                                data-value="<?php echo $mention['rang']; ?>"
+                                aria-pressed="<?php echo ($compactValues[$qid] === $mention['rang']) ? 'true' : 'false'; ?>"
+                                aria-label="<?php echo htmlspecialchars($question['titre'] . ' : ' . $mention['libelle']); ?>"
+                                style="--sel-bg: <?php echo $style['fond']; ?>; --sel-fg: <?php echo $style['texte']; ?>;"><?php echo $style['court']; ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div class="v2-other">
+                    <?php include __DIR__ . '/vote-question.inc.php'; ?>
+                </div>
+                <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="v2-footer">
+                <button type="submit" class="btn btn-success">Valider mon vote</button>
+            </div>
+        </form>
+
         <?php else: ?>
 
         <?php if (!empty($errors)): ?>
@@ -1060,13 +1421,7 @@ $typeLabels = [
 
             <?php foreach ($questions as $i => $question): ?>
 
-            <?php if ($question['type_question'] == 2): ?>
-            <!-- Séparateur -->
-            <div class="question-card separator">
-                <div class="question-title"><?php echo htmlspecialchars($question['titre']); ?></div>
-            </div>
-
-            <?php elseif ($question['type_question'] == 0): ?>
+            <?php if ($question['type_question'] == 0): ?>
             <!-- Vote nuancé -->
             <div class="question-card">
                 <?php if (!empty($question['image_url'])): ?>
@@ -1100,99 +1455,8 @@ $typeLabels = [
                 </div>
             </div>
 
-            <?php elseif ($question['type_question'] == 1): ?>
-            <!-- Réponse ouverte -->
-            <div class="question-card">
-                <?php if (!empty($question['image_url'])): ?>
-                <img src="<?php echo htmlspecialchars($question['image_url']); ?>" alt="" class="clickable-image question-image" onclick="openLightbox(this.src)">
-                <?php endif; ?>
-                <div class="question-header">
-                    <span class="question-number"><?php echo $i + 1; ?></span>
-                    <div class="question-content">
-                        <div class="question-title">
-                            <?php echo htmlspecialchars($question['titre']); ?>
-                            <?php if ($question['est_obligatoire']): ?><span class="required">*</span><?php endif; ?>
-                        </div>
-                        <?php if ($question['question']): ?>
-                        <div class="question-description"><?php echo nl2br(htmlspecialchars($question['question'])); ?></div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="open-response">
-                    <textarea name="reponse[<?php echo $question['id']; ?>]"
-                              placeholder="Votre réponse..."><?php echo htmlspecialchars($_POST['reponse'][$question['id']] ?? ''); ?></textarea>
-                </div>
-            </div>
-
-            <?php elseif ($question['type_question'] == 4): ?>
-            <!-- QCM -->
-            <?php $reponsesPossibles = getReponsesPossibles($question['id']); ?>
-            <div class="question-card">
-                <?php if (!empty($question['image_url'])): ?>
-                <img src="<?php echo htmlspecialchars($question['image_url']); ?>" alt="" class="clickable-image question-image" onclick="openLightbox(this.src)">
-                <?php endif; ?>
-                <div class="question-header">
-                    <span class="question-number"><?php echo $i + 1; ?></span>
-                    <div class="question-content">
-                        <div class="question-title">
-                            <?php echo htmlspecialchars($question['titre']); ?>
-                            <?php if ($question['est_obligatoire']): ?><span class="required">*</span><?php endif; ?>
-                        </div>
-                        <?php if ($question['question']): ?>
-                        <div class="question-description"><?php echo nl2br(htmlspecialchars($question['question'])); ?></div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="qcm-options">
-                    <?php foreach ($reponsesPossibles as $rep): ?>
-                    <div class="qcm-option">
-                        <label>
-                            <input type="radio" name="reponse[<?php echo $question['id']; ?>]"
-                                   value="<?php echo htmlspecialchars($rep['libelle']); ?>">
-                            <span><?php echo htmlspecialchars($rep['libelle']); ?></span>
-                        </label>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <?php elseif ($question['type_question'] == 3): ?>
-            <!-- Préféré du lot : selection unique parmi les questions Vote Nuancé du même lot -->
-            <?php
-            // Générer les options automatiquement depuis les titres des questions du lot
-            $lotNum = intval($question['lot'] ?? 0);
-            $lotQuestions = getQuestionTitlesForLot($scrutin['id'], $lotNum);
-            ?>
-            <div class="question-card">
-                <?php if (!empty($question['image_url'])): ?>
-                <img src="<?php echo htmlspecialchars($question['image_url']); ?>" alt="" class="clickable-image question-image" onclick="openLightbox(this.src)">
-                <?php endif; ?>
-                <div class="question-header">
-                    <span class="question-number"><?php echo $i + 1; ?></span>
-                    <div class="question-content">
-                        <div class="question-title">
-                            <?php echo htmlspecialchars($question['titre']); ?>
-                            <?php if ($question['est_obligatoire']): ?><span class="required">*</span><?php endif; ?>
-                        </div>
-                        <?php if ($question['question']): ?>
-                        <div class="question-description"><?php echo nl2br(htmlspecialchars($question['question'])); ?></div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="prefere-options">
-                    <?php foreach ($lotQuestions as $lq): ?>
-                    <div class="prefere-option">
-                        <label class="prefere-label">
-                            <input type="radio"
-                                   name="reponse[<?php echo $question['id']; ?>]"
-                                   value="<?php echo htmlspecialchars($lq['titre']); ?>"
-                                   <?php echo (($_POST['reponse'][$question['id']] ?? '') === $lq['titre']) ? 'checked' : ''; ?>>
-                            <span class="prefere-text"><?php echo htmlspecialchars($lq['titre']); ?></span>
-                        </label>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
+            <?php else: ?>
+            <?php include __DIR__ . '/vote-question.inc.php'; ?>
             <?php endif; ?>
 
             <?php endforeach; ?>
@@ -1227,6 +1491,32 @@ $typeLabels = [
             lightbox.classList.remove('active');
             document.body.style.overflow = '';
         }
+    }
+
+    // Format 2 : sélection d'une mention par bouton et compteur d'avis
+    document.querySelectorAll('.v2-row').forEach(function(row) {
+        const input = row.querySelector('.v2-value');
+        const buttons = row.querySelectorAll('.v2-btn');
+        buttons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                input.value = btn.dataset.value;
+                buttons.forEach(function(b) {
+                    b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+                });
+                updateV2Counter();
+            });
+        });
+    });
+
+    function updateV2Counter() {
+        const counter = document.getElementById('v2-counter');
+        if (!counter) return;
+        const inputs = document.querySelectorAll('.v2-value');
+        let nbAvis = 0;
+        inputs.forEach(function(input) {
+            if (input.value !== input.dataset.sa) nbAvis++;
+        });
+        counter.textContent = nbAvis + ' / ' + inputs.length + ' avis';
     }
 
     // Fermer avec Echap
