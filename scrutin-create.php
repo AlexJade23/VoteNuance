@@ -43,6 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($format_vote, [1, 2])) {
             $format_vote = 1;
         }
+        $palette_vote = intval($_POST['palette_vote'] ?? 1);
+        if (!array_key_exists($palette_vote, getVotePalettes())) {
+            $palette_vote = 1;
+        }
 
         // Validation
         if (empty($titre)) {
@@ -108,6 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'ordre_mentions' => $ordre_mentions,
                     'nb_mentions' => $nb_mentions,
                     'format_vote' => $format_vote,
+                    'palette_vote' => $palette_vote,
                     'owner_id' => $user['id']
                 ]);
 
@@ -718,6 +723,11 @@ $csrfToken = generateCsrfToken();
                             Format 2 : compact, mobile first (une ligne par question)
                         </option>
                     </select>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Couleurs des boutons de vote (format 2)</label>
+                    <?php echo renderPaletteChoices(intval($_POST['palette_vote'] ?? 1)); ?>
                 </div>
 
                 <div class="form-group" style="margin-top: 20px;">

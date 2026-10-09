@@ -33,7 +33,7 @@ if ($scrutin['ordre_mentions'] ?? 0) {
 
 // Format de la page de vote : 1 = classique, 2 = compact mobile first
 $formatVote = intval($scrutin['format_vote'] ?? 1);
-$compactStyles = getMentionsCompactStyles($nbMentions);
+$compactStyles = getMentionsCompactStyles($nbMentions, intval($scrutin['palette_vote'] ?? 1));
 
 // Vérifier si le scrutin est ouvert
 $now = time();

@@ -62,5 +62,13 @@ ALTER TABLE scrutins ADD COLUMN format_vote TINYINT UNSIGNED DEFAULT 1
     COMMENT 'Format de la page de vote: 1 classique, 2 mobile first (defaut: 1)';
 
 -- ============================================================================
+-- Migration 006 - 2026-10-10 - Jeu de couleurs du format de vote 2 (issue #16)
+-- ============================================================================
+-- 1 = bleu / orange, 2 = classique (couleurs du format 1), 3 = violet / vert
+
+ALTER TABLE scrutins ADD COLUMN palette_vote TINYINT UNSIGNED DEFAULT 1
+    COMMENT 'Couleurs du format de vote 2: 1 bleu/orange, 2 classique, 3 violet/vert';
+
+-- ============================================================================
 -- FIN DES MIGRATIONS
 -- ============================================================================
