@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     
     -- Identification SSO (un seul champ unifié)
-    sso_provider ENUM('google', 'microsoft') NOT NULL,
+    sso_provider ENUM('google', 'microsoft', 'magiclink', 'mastodon') NOT NULL,
     sso_id VARCHAR(255) NOT NULL,
     
     -- Données optionnelles selon consentement utilisateur

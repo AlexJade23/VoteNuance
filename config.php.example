@@ -25,6 +25,17 @@ define('MICROSOFT_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET_MICROSOFT');
 define('MICROSOFT_REDIRECT_URI', 'https://votresite.com/callback.php');
 define('MICROSOFT_TENANT', 'common'); // 'common' pour comptes personnels et professionnels
 
+// Configuration Mastodon OAuth
+// Application enregistree sur l'instance (Preferences > Developpement), scope read:accounts
+// Laisser MASTODON_CLIENT_ID vide pour masquer le bouton de connexion Mastodon
+define('MASTODON_INSTANCE', 'https://mastodon.social');
+define('MASTODON_CLIENT_ID', 'VOTRE_CLIENT_ID_MASTODON');
+define('MASTODON_CLIENT_SECRET', 'VOTRE_CLIENT_SECRET_MASTODON');
+define('MASTODON_REDIRECT_URI', 'https://votresite.com/callback-mastodon.php');
+// Cle du HMAC stocke dans users.sso_id (generer avec : php -r 'echo bin2hex(random_bytes(32));')
+// NE JAMAIS LA CHANGER une fois des comptes Mastodon crees : ils deviendraient inaccessibles
+define('MASTODON_SSO_HMAC_KEY', 'VOTRE_CLE_ALEATOIRE');
+
 // URLs OAuth (ne pas modifier)
 define('GOOGLE_AUTH_URL', 'https://accounts.google.com/o/oauth2/v2/auth');
 define('GOOGLE_TOKEN_URL', 'https://oauth2.googleapis.com/token');

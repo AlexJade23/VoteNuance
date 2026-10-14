@@ -23,7 +23,7 @@ CREATE TABLE users (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 
     -- Identification SSO
-    sso_provider ENUM('google', 'microsoft') NOT NULL,
+    sso_provider ENUM('google', 'microsoft', 'magiclink', 'mastodon') NOT NULL,
     sso_id VARCHAR(255) NOT NULL,
 
     -- Données optionnelles (consentement utilisateur)

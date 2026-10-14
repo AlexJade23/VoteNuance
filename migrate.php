@@ -74,6 +74,37 @@ try {
         echo "<p style='color:green'>✓ Colonne palette_vote ajoutee avec succes!</p>\n";
     }
 
+    // Migration 007 : connexion Mastodon (issue #17)
+    // Les fichiers de schema declaraient ENUM('google','microsoft') alors que le code
+    // utilise aussi 'magiclink' : on lit le type reel et on conserve toutes ses valeurs.
+    $stmt = $pdo->query("SHOW COLUMNS FROM users LIKE 'sso_provider'");
+    $ssoProviderType = $stmt->fetch(PDO::FETCH_ASSOC)['Type'] ?? '';
+    echo "<p>Type actuel de users.sso_provider : " . htmlspecialchars($ssoProviderType) . "</p>\n";
+
+    if (stripos($ssoProviderType, 'enum(') !== 0) {
+        echo "<p style='color:green'>✓ sso_provider n'est pas un ENUM : 'mastodon' est deja accepte.</p>\n";
+    } else {
+        preg_match_all("/'([^']*)'/", $ssoProviderType, $matches);
+        $providers = $matches[1];
+
+        if (in_array('mastodon', $providers, true)) {
+            echo "<p style='color:green'>✓ La valeur mastodon existe deja dans sso_provider.</p>\n";
+        } else {
+            echo "<p>Migration 007: Ajout de la valeur mastodon a sso_provider...</p>\n";
+
+            foreach (['google', 'microsoft', 'magiclink', 'mastodon'] as $provider) {
+                if (!in_array($provider, $providers, true)) {
+                    $providers[] = $provider;
+                }
+            }
+            $enumValues = implode(', ', array_map([$pdo, 'quote'], $providers));
+
+            $pdo->exec("ALTER TABLE users MODIFY COLUMN sso_provider ENUM($enumValues) NOT NULL");
+
+            echo "<p style='color:green'>✓ sso_provider accepte maintenant : " . htmlspecialchars($enumValues) . "</p>\n";
+        }
+    }
+
     // Afficher la structure actuelle de la table scrutins
     echo "<h2>Structure de la table scrutins:</h2>\n";
     echo "<pre>\n";

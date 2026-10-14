@@ -17,6 +17,49 @@ $errorMessages = [
         'message' => 'Ce lien de connexion n\'est pas valide ou a deja ete utilise.',
         'action' => 'Demander un nouveau lien'
     ],
+    // Connexion Mastodon (issue #17)
+    'mastodon_denied' => [
+        'title' => 'Connexion annulee',
+        'message' => 'Vous avez refuse l\'autorisation sur Mastodon. Aucune donnee n\'a ete enregistree.',
+        'action' => 'Retour a la connexion',
+        'url' => '../login.php'
+    ],
+    'state_invalid' => [
+        'title' => 'Session expiree',
+        'message' => 'La demande de connexion a expire ou n\'est pas valide. Merci de recommencer depuis la page de connexion.',
+        'action' => 'Retour a la connexion',
+        'url' => '../login.php'
+    ],
+    'token_failed' => [
+        'title' => 'Connexion impossible',
+        'message' => 'Mastodon n\'a pas confirme l\'autorisation. Merci de reessayer.',
+        'action' => 'Retour a la connexion',
+        'url' => '../login.php'
+    ],
+    'profile_invalid' => [
+        'title' => 'Compte non verifie',
+        'message' => 'Votre compte Mastodon n\'a pas pu etre verifie (compte desactive, en attente de validation ou reponse inattendue).',
+        'action' => 'Retour a la connexion',
+        'url' => '../login.php'
+    ],
+    'instance_unreachable' => [
+        'title' => 'Mastodon indisponible',
+        'message' => 'Le serveur Mastodon ne repond pas pour le moment. Merci de reessayer plus tard ou d\'utiliser une autre methode de connexion.',
+        'action' => 'Retour a la connexion',
+        'url' => '../login.php'
+    ],
+    'mastodon_unavailable' => [
+        'title' => 'Connexion Mastodon indisponible',
+        'message' => 'La connexion via Mastodon n\'est pas disponible pour le moment.',
+        'action' => 'Retour a la connexion',
+        'url' => '../login.php'
+    ],
+    'mastodon_error' => [
+        'title' => 'Erreur',
+        'message' => 'Une erreur est survenue lors de la connexion via Mastodon. Merci de reessayer.',
+        'action' => 'Retour a la connexion',
+        'url' => '../login.php'
+    ],
     'unknown' => [
         'title' => 'Erreur',
         'message' => 'Une erreur est survenue lors de la connexion.',
@@ -25,6 +68,7 @@ $errorMessages = [
 ];
 
 $errorInfo = $errorMessages[$reason] ?? $errorMessages['unknown'];
+$actionUrl = $errorInfo['url'] ?? '../login-magiclink.php';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -149,7 +193,7 @@ $errorInfo = $errorMessages[$reason] ?? $errorMessages['unknown'];
         <h1><?php echo htmlspecialchars($errorInfo['title']); ?></h1>
         <p class="message"><?php echo htmlspecialchars($errorInfo['message']); ?></p>
 
-        <a href="../login-magiclink.php" class="btn btn-primary">
+        <a href="<?php echo htmlspecialchars($actionUrl); ?>" class="btn btn-primary">
             <?php echo htmlspecialchars($errorInfo['action']); ?>
         </a>
 

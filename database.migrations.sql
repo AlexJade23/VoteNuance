@@ -70,5 +70,17 @@ ALTER TABLE scrutins ADD COLUMN palette_vote TINYINT UNSIGNED DEFAULT 1
     COMMENT 'Couleurs du format de vote 2: 1 bleu/orange, 2 classique, 3 violet/vert';
 
 -- ============================================================================
+-- Migration 007 - 2026-10-14 - Connexion Mastodon (issue #17)
+-- ============================================================================
+-- Ajoute 'mastodon' aux fournisseurs d'identite (sso_id = HMAC-SHA256 de '<domaine>:<id du compte>').
+-- AVANT d'executer : verifier le type reel avec
+--   SHOW COLUMNS FROM users LIKE 'sso_provider';
+-- et conserver toutes les valeurs existantes (notamment 'magiclink').
+-- Si la colonne n'est pas un ENUM, cette migration est inutile.
+
+ALTER TABLE users MODIFY COLUMN sso_provider
+    ENUM('google', 'microsoft', 'magiclink', 'mastodon') NOT NULL;
+
+-- ============================================================================
 -- FIN DES MIGRATIONS
 -- ============================================================================

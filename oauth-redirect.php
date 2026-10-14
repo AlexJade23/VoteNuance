@@ -10,12 +10,22 @@ if (!isset($_POST['csrf_token']) || !verifyCsrfToken($_POST['csrf_token'])) {
 // Récupérer le provider
 $provider = $_POST['provider'] ?? '';
 
-if (!in_array($provider, ['google', 'microsoft'])) {
+if (!in_array($provider, ['google', 'microsoft', 'mastodon'])) {
     die('Provider invalide');
+}
+
+if ($provider === 'mastodon' && !mastodonIsConfigured()) {
+    header('Location: auth/error.php?reason=mastodon_unavailable');
+    exit;
 }
 
 // Récupérer les choix de l'utilisateur
 $consentEmailHash = isset($_POST['consent_email_hash']) && $_POST['consent_email_hash'] === '1';
+
+// Mastodon ne transmet pas d'email : le consentement est sans objet
+if ($provider === 'mastodon') {
+    $consentEmailHash = false;
+}
 $displayName = trim($_POST['display_name'] ?? '');
 
 // Valider le pseudo (max 50 caractères, alphanumériques et quelques caractères spéciaux)
@@ -65,6 +75,20 @@ if ($provider === 'google') {
         'state' => $state,
         'response_mode' => 'query',
         'prompt' => 'select_account'
+    ]);
+} elseif ($provider === 'mastodon') {
+    // PKCE (S256), pris en charge par Mastodon depuis la version 4.3
+    $pkce = mastodonGeneratePkce();
+    $_SESSION['oauth_pkce_verifier'] = $pkce['verifier'];
+
+    $authUrl = mastodonInstanceUrl() . '/oauth/authorize?' . http_build_query([
+        'response_type' => 'code',
+        'client_id' => MASTODON_CLIENT_ID,
+        'redirect_uri' => MASTODON_REDIRECT_URI,
+        'scope' => 'read:accounts',
+        'state' => $state,
+        'code_challenge' => $pkce['challenge'],
+        'code_challenge_method' => 'S256'
     ]);
 }
 

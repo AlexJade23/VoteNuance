@@ -432,8 +432,177 @@ function exchangeCodeForTokens($code, $provider) {
     if (!isset($data['id_token'])) {
         throw new Exception('Pas d\'ID token reçu');
     }
-    
+
     return $data;
+}
+
+// ============================================================================
+// CONNEXION MASTODON (issue #17)
+// OAuth 2.0 authorization code + PKCE, sans OpenID Connect.
+// Doc : https://docs.joinmastodon.org/methods/oauth/
+// ============================================================================
+
+/**
+ * Erreur du flux Mastodon.
+ * $reason est la clé du message affiché par auth/error.php ;
+ * le message de l'exception est réservé au journal (jamais de jeton ni de secret).
+ */
+class MastodonAuthException extends Exception {
+    public $reason;
+
+    public function __construct($reason, $logMessage) {
+        parent::__construct($logMessage);
+        $this->reason = $reason;
+    }
+}
+
+/**
+ * Vérifier que la connexion Mastodon est configurée dans config.php
+ */
+function mastodonIsConfigured() {
+    foreach (['MASTODON_INSTANCE', 'MASTODON_CLIENT_ID', 'MASTODON_CLIENT_SECRET', 'MASTODON_REDIRECT_URI', 'MASTODON_SSO_HMAC_KEY'] as $name) {
+        if (!defined($name) || constant($name) === '') {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * URL de l'instance, sans slash final (ex : https://mastodon.social)
+ */
+function mastodonInstanceUrl() {
+    return rtrim(MASTODON_INSTANCE, '/');
+}
+
+/**
+ * Domaine de l'instance (ex : mastodon.social)
+ */
+function mastodonInstanceDomain() {
+    return strtolower(parse_url(MASTODON_INSTANCE, PHP_URL_HOST));
+}
+
+/**
+ * Identifiant stocké dans users.sso_id.
+ * L'id d'un compte n'est unique qu'au sein de son instance, d'où le préfixe du domaine.
+ * Cet id étant public (il permet de retrouver le profil), on n'en stocke qu'un HMAC :
+ * l'identifiant reste stable et unique mais opaque sans la clé.
+ * Changer MASTODON_SSO_HMAC_KEY rendrait les comptes Mastodon existants inaccessibles.
+ */
+function mastodonSsoId($accountId) {
+    return hash_hmac('sha256', mastodonInstanceDomain() . ':' . $accountId, MASTODON_SSO_HMAC_KEY);
+}
+
+/**
+ * Générer une paire PKCE (méthode S256, seule méthode acceptée par Mastodon)
+ * @return array ['verifier' => string, 'challenge' => string]
+ */
+function mastodonGeneratePkce() {
+    $verifier = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+    $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
+
+    return ['verifier' => $verifier, 'challenge' => $challenge];
+}
+
+/**
+ * Appel HTTP vers l'instance Mastodon
+ * @return array ['status' => int, 'data' => array|null]
+ * @throws MastodonAuthException instance_unreachable si l'instance ne répond pas ou renvoie une erreur 5xx
+ */
+function mastodonRequest($method, $path, $params = [], $accessToken = null) {
+    $headers = ['Accept: application/json'];
+    if ($accessToken !== null) {
+        $headers[] = 'Authorization: Bearer ' . $accessToken;
+    }
+
+    $ch = curl_init(mastodonInstanceUrl() . $path);
+    if ($method === 'POST') {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+    }
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+    $response = curl_exec($ch);
+    $curlErrno = curl_errno($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($response === false) {
+        throw new MastodonAuthException('instance_unreachable', "Mastodon $path : erreur cURL $curlErrno");
+    }
+    if ($httpCode >= 500) {
+        throw new MastodonAuthException('instance_unreachable', "Mastodon $path : HTTP $httpCode");
+    }
+
+    return ['status' => $httpCode, 'data' => json_decode($response, true)];
+}
+
+/**
+ * Échanger le code d'autorisation contre un jeton d'accès (POST /oauth/token)
+ * @return string Jeton d'accès
+ */
+function mastodonExchangeCode($code, $codeVerifier) {
+    $result = mastodonRequest('POST', '/oauth/token', [
+        'grant_type' => 'authorization_code',
+        'code' => $code,
+        'client_id' => MASTODON_CLIENT_ID,
+        'client_secret' => MASTODON_CLIENT_SECRET,
+        'redirect_uri' => MASTODON_REDIRECT_URI,
+        'code_verifier' => $codeVerifier
+    ]);
+
+    $token = $result['data']['access_token'] ?? null;
+
+    if ($result['status'] !== 200 || !is_string($token) || $token === '') {
+        $error = $result['data']['error'] ?? '';
+        $error = is_string($error) ? preg_replace('/[^a-z_]/', '', $error) : '';
+        throw new MastodonAuthException('token_failed', "Mastodon /oauth/token : HTTP {$result['status']} $error");
+    }
+
+    return $token;
+}
+
+/**
+ * Récupérer l'id du compte authentifié (GET /api/v1/accounts/verify_credentials)
+ * @return string Id du compte (chaîne numérique)
+ */
+function mastodonVerifyCredentials($accessToken) {
+    $result = mastodonRequest('GET', '/api/v1/accounts/verify_credentials', [], $accessToken);
+
+    // 401 jeton invalide, 403 compte désactivé ou en attente, 422 pas d'utilisateur
+    if ($result['status'] !== 200) {
+        throw new MastodonAuthException('profile_invalid', "Mastodon verify_credentials : HTTP {$result['status']}");
+    }
+
+    $accountId = $result['data']['id'] ?? null;
+
+    if (!is_string($accountId) || !ctype_digit($accountId)) {
+        throw new MastodonAuthException('profile_invalid', 'Mastodon verify_credentials : id de compte absent ou invalide');
+    }
+
+    return $accountId;
+}
+
+/**
+ * Révoquer le jeton d'accès (POST /oauth/revoke) : il n'est plus utile
+ * une fois l'identité vérifiée. Un échec est journalisé sans bloquer la connexion.
+ */
+function mastodonRevokeToken($accessToken) {
+    try {
+        $result = mastodonRequest('POST', '/oauth/revoke', [
+            'client_id' => MASTODON_CLIENT_ID,
+            'client_secret' => MASTODON_CLIENT_SECRET,
+            'token' => $accessToken
+        ]);
+        if ($result['status'] !== 200) {
+            error_log("Mastodon /oauth/revoke : HTTP {$result['status']}");
+        }
+    } catch (MastodonAuthException $e) {
+        error_log($e->getMessage());
+    }
 }
 
 /**
